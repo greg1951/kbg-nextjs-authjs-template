@@ -2,19 +2,22 @@
 2. [Installations](#installations)
    1. [shdcn](#shdcn)
    2. [Drizzle and PostgreSql](#drizzle-and-postgresql)
-   3. [Cryptography](#cryptography)
+   3. [Zod](#zod)
+   4. [Cryptography](#cryptography)
 3. [Register Form Implementation](#register-form-implementation)
    1. [Password Schema Validation](#password-schema-validation)
       1. [passwordSchema.ts](#passwordschemats)
       2. [passwordMatchSchema.ts](#passwordmatchschemats)
       3. [Update page.tsx File](#update-pagetsx-file)
-   2. [Posting Register Form Data](#posting-register-form-data)
+   2. [Server Action Form Data](#server-action-form-data)
+      1. [The registerUser Function](#the-registeruser-function)
+      2. [The handleSubmit Function](#the-handlesubmit-function)
 4. [Saving User Data](#saving-user-data)
    1. [Install and Configure](#install-and-configure)
    2. [Create Users Table](#create-users-table)
    3. [Create Schema in Neon PostgreSql](#create-schema-in-neon-postgresql)
    4. [Confirm Table in Neon](#confirm-table-in-neon)
-   5. [Adding Registered User](#adding-registered-user)
+   5. [Adding Registered User with Hashed Password](#adding-registered-user-with-hashed-password)
 
 
 ---
@@ -22,6 +25,7 @@
 This markdown file will document setting up a form to register new users and add them to a users table that resides in a PostgreSql database on the Neon platform.
 
 # Installations
+There are a ton of libraries used in the project. Having the installations defined in one place is good.
 
 ## shdcn
 The shadcn UI component library was used extensively throughout. The installs below were done. 
@@ -46,15 +50,23 @@ npm install drizzle-kit@latest
 npm i pg
 npm i @types/pg
 ```
+
+## Zod
+The Zod library provides useful way to create javascript and typescript schema. It also has a very useful collection of validations available for various types. Zod is running Javascript under the covers so Zod validations will require the file to be rendered (run) client side.
+
+```bash
+npm i zod
+```
+
 ## Cryptography
 For hashing of the password the `bcryptjs` library was used.
 
 ```bash
+npm i bcryptjs
 npm i --save-dev @types/bcryptjs
 ```
-
 # Register Form Implementation
-The form that resides in `@/app/register/page.tsx` is built from the shadcn Form component but Form relies on other components to implement it. 
+The form that resides in `@/app/register/page.tsx` is built from the shadcn Form component but Form relies on other components to implement it. (The form below is a smaller portion of the form that will be implemented.)
 
 ```javascript
 'use client';
@@ -168,7 +180,6 @@ export const passwordMatchSchema = z
     }
   })
   ```
-
 **Notes:**
 
 - The exported object references password and passwordConfirm, which do not need to be defined in the `formSchema` variable in the `page.tsx` file.
@@ -187,27 +198,24 @@ const formSchema = z.object({
 }).and(passwordMatchSchema);
 ```
 
-## Posting Register Form Data
-As the form and associated validations are operational, what remains now is to post the form as a part of a server action. There are numerous ways to organize server actions but one way used here is to create the `actions.ts` file in the same directory where the form exists, i.e. `@/app/register/page.tsx`.
+## Server Action Form Data
+As the form and associated validations are operational, what remains now is to post the form as a part of a server action. 
 
-Shown below is the handleSubmit function run on form submission. 
+### The registerUser Function
 
-```javascript
-  const handleSubmit = async (data: z.infer<typeof formSchema>) => {
-    const response = await registerUser({
-      email: data.email,
-      password: data.password,
-      passwordConfirm: data.passwordConfirm
-    })
-```
+There are numerous ways to organize server actions but one way used here is to create the `actions.ts` file in the same directory where the form exists, i.e. `@/app/register/page.tsx`.
 
-The `registerUser` function expects three arguments. As shown below, the server function will *eventually* implement logic to insert the registered user in a database.
+It is **important to review the notes** after the code below, as there were some challenges implementing the function.
 
 ```javascript
 'use server';
 
+import db from "@/db/drizzle";
+import { users } from "@/db/usersSchema";
 import { passwordMatchSchema } from "@/validation/passwordMatchSchema";
 import z from "zod";
+import { hashUserPassword, splitHashedPassword } from "@/lib/hash";
+import { isUserRegistered } from "@/db/userQueries";
 
 export const registerUser = async({
   email, 
@@ -218,30 +226,99 @@ export const registerUser = async({
     passwordConfirm: string
     }
   ) => {
-    const newUserSchema = z.object({
-      email: z.email()
-    }).and(passwordMatchSchema);
-    
-    const newUserValidation = newUserSchema.safeParse({email, password, passwordConfirm});
-    if (!newUserValidation.success) {
+    try {
+      const newUserSchema = z.object({
+        email: z.email()
+      }).and(passwordMatchSchema);
+      
+      const newUserValidation = newUserSchema.safeParse({email, password, passwordConfirm});
+      if (!newUserValidation.success) {
+        return {
+          error: true,
+          message: newUserValidation.error.issues[0]?.message ?? "An error occurred",
+        };
+      };
+
+      const isRegistered = await isUserRegistered(email);
+      if (isRegistered) {
+        return {
+          error: true,
+          message: `An account is already registered for this email.`
+        }
+      }
+
+      const result = await insertRegisteredUser(email, password);
+
+    } catch (e: unknown) {
+      if (e instanceof Error && e.code === "23505") {
+        return {
+          error: true,
+          message: "An accound is already registered with that emaill"
+        };
+      }
       return {
         error: true,
-        message: newUserValidation.error.issues[0]?.message ?? "An error occurred",
-      };
-    };
-    // database registration will be added here
-    return newUserValidation;
-    
+        message: "An unknown error occured."
+      }
+    }    
   };
 ```
 
 **Notes:**
 
+- The `registerUser` function expects three arguments. As shown below, the server function will *eventually* implement logic to insert the registered user in a database.
+
 - The server function runs only the server-side and is asynchronous.
+
 - There are three input parameters they are defined with types to ensure type safety.
+
 - In the callback, Zod `safeParse` method is used rather than `parse`. 
   - The latter will throw an error if invalid while safeParse will return a boolean if invalid. 
   - Using `parse` would require a try-catch block which is more code to deal with.
+
+- Normally a `try-catch` block could wrap the insert functionality that would catch the *23505* constraint error when a duplicate email is detected, but that functionality did not work using drizzle. Instead, a query is run to check for the email in the users table.
+  - Created `@/db/userQueries.ts` file to run select on the email address.
+  - Added logic to run the function (`isUserRegistered(email)`) and return an error on the duplicate email as a form validation error. 
+
+### The handleSubmit Function
+
+Shown below is the handleSubmit function run on the form submission in the `page.tsx` file. 
+
+It is important to review the notes after the code snippet for handleSubmit shown below as there were some challenges implementing it.
+
+```tsx
+...
+  const [submitted, setSubmitted] = useState(false);
+  const handleSubmit = async (data: z.infer<typeof formSchema>) => {
+    const response = await registerUser({
+      email: data.email,
+      password: data.password,
+      passwordConfirm: data.passwordConfirm
+    });
+
+    if (response?.error) {
+      setSubmitted(false);
+      form.setError("email", {
+        message: response?.message,
+      });
+    }
+    else {
+      setSubmitted(true);
+    }
+  };
+
+  return (
+    <main className="flex justify-center items-center min-h-screen">
+      { submitted ? (...)})
+...
+```
+**Notes**:
+
+- It was necessary to implement a state (submitted) variable as the `form.formState.isSubmitSuccessful` did not work. Rather than use the formState tertiary operation in the return statement, the `submitted` state variable was used instead.
+
+- The `submitted` state variable default is false, such that if the email is already registered then [an Email error can be reported in the UI as shown here.](./docs/account-already-exists-message.png)
+
+- If the form was submitted then a `Card` component is used to provide a button to take them to the login page. Otherwise, if not submitted then the `registration Card` is rendered. 
 
 # Saving User Data
 
@@ -355,7 +432,7 @@ Verify in Neon the `users` table has been created.
 
 ![](./docs/users-table-in-neon.png)
 
-## Adding Registered User
+## Adding Registered User with Hashed Password
 The password will be encrypted in the users table entry inserted for new users. 
 
 1. Install the encryption library: `npm i bcryptjs`

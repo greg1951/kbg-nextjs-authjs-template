@@ -5,7 +5,7 @@ import { users } from "@/db/usersSchema";
 import { passwordMatchSchema } from "@/validation/passwordMatchSchema";
 import z from "zod";
 import { hashUserPassword, splitHashedPassword } from "@/lib/hash";
-import { isUserRegistered } from "@/db/userQueries";
+import { insertRegisteredUser, isUserRegistered } from "@/db/userQueries";
 
 export const registerUser = async({
   email, 
@@ -29,21 +29,15 @@ export const registerUser = async({
       };
     };
     const isRegistered = await isUserRegistered(email);
-    // console.log('action->registerUser->isRegistered? ',isRegistered);
     if (isRegistered) {
       return {
         error: true,
         message: `An account is already registered for this email.`
       }
     }
-    const hashedPassword = hashUserPassword(password);
-    // console.log('action->registerUser->password: ', hashedPassword);
-    const insertResult = await db.insert(users).values({
-      email: email,
-      password: hashedPassword,
-    });
-    console.log('action->registerUser->newUserValidation ',newUserValidation);
-    //return newUserValidation;
+
+    const result = await insertRegisteredUser(email, password);
+    
     } catch (e: unknown) {
       if (e instanceof Error && e.code === "23505") {
         return {

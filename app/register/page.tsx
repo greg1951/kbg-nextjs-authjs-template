@@ -30,7 +30,6 @@ export default function Register() {
 
   const [submitted, setSubmitted] = useState(false);
   const handleSubmit = async (data: z.infer<typeof formSchema>) => {
-    setSubmitted(false);
     const response = await registerUser({
       email: data.email,
       password: data.password,
@@ -38,15 +37,18 @@ export default function Register() {
     });
 
     if (response?.error) {
+      setSubmitted(false);
       form.setError("email", {
         message: response?.message,
       });
-    };
-    /* Remember, to see console logs you need to Inspect in the browser */
-    // console.log('Register->handleSubmit->response: ', response);
-    setSubmitted(true);
+    }
+    else {
+      setSubmitted(true);
+    }
   };
 
+  /* Remember, to see console logs you need to Inspect in the browser */
+  console.log('Register->handleSubmit->submitted: ', submitted);
   return (
     <main className="flex justify-center items-center min-h-screen">
       { submitted ? (
@@ -70,7 +72,7 @@ export default function Register() {
           <CardContent>
             <Form { ...form }>
               <form onSubmit={ form.handleSubmit(handleSubmit) }>
-                <fieldset disabled={ form.formState.isSubmitting } className="flex flex-col gap-5">
+                <fieldset disabled={ form.formState.isSubmitting } className="flex flex-col gap-2">
                   <FormField
                     control={ form.control }
                     name="email"
