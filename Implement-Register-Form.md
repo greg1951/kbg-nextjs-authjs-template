@@ -27,6 +27,9 @@ This markdown file will document setting up a form to register new users and add
 # Installations
 There are a ton of libraries used in the project. Having the installations defined in one place is good.
 
+The `npx` command to create the project will prompt you whether to use it and it was selected. Refer to the [Tailwind CSS](https://tailwindcss.com/) for installation and docs on the classes. Install the VS Code **Tailwind CSS Intellisense extension** which is amazing.
+
+
 ## shdcn
 The shadcn UI component library was used extensively throughout. The installs below were done. 
 

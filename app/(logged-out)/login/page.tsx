@@ -1,4 +1,5 @@
 'use client';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
   from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage }
@@ -10,16 +11,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from 'zod';
 import Link from "next/link";
 import { passwordSchema } from "@/validation/passwordSchema";
-import { useState } from "react";
 import { loginUser } from "./actions";
+import { useRouter } from "next/navigation";
 
 const formSchema = z
   .object({ email: z.email(), password: passwordSchema });
 
 
 export default function Login() {
-
-  const [submitted, setSubmitted] = useState(false);
+  const router = useRouter();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -28,22 +28,21 @@ export default function Login() {
     },
   });
   const handleSubmit = async (data: z.infer<typeof formSchema>) => {
+    // console.info('Login->handleSubmit: started...')
     const response = await loginUser({
       email: data.email,
       password: data.password
     });
 
     if (response?.error) {
-      setSubmitted(false);
-      form.setError("email", {
+      form.setError("root", {
         message: response?.message,
       });
     }
     else {
-      setSubmitted(true);
+      router.push('/my-account');
     }
   };
-
 
   return (
     <main className="flex justify-center items-center min-h-screen">
@@ -82,6 +81,11 @@ export default function Login() {
                     </FormItem>
                   ) }
                 />
+                { !!form.formState.errors.root?.message &&
+                  <FormMessage>
+                    { form.formState.errors.root.message }
+                  </FormMessage>
+                }
                 <Button type="submit">Login</Button>
               </fieldset>
             </form>
@@ -89,14 +93,19 @@ export default function Login() {
         </CardContent>
         <CardFooter className="flex-col gap-2">
           <div className="text-muted-foreground text-sm">
-            Create new account?{ " " }
+            Don&apos;t have an account?{ "   " }
             <Link href="/register" className="underline">
               Register
+            </Link>
+          </div>
+          <div className="text-muted-foreground text-sm">
+            Forgot password?{ "   " }
+            <Link href="/forgot" className="underline">
+              Reset password
             </Link>
           </div>
         </CardFooter>
       </Card>
     </main>
-
   )
 }

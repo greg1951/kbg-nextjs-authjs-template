@@ -1,10 +1,7 @@
 'use server';
 
-import db from "@/db/drizzle";
-import { users } from "@/db/usersSchema";
 import { passwordMatchSchema } from "@/validation/passwordMatchSchema";
 import z from "zod";
-import { hashUserPassword, splitHashedPassword } from "@/lib/hash";
 import { insertRegisteredUser, isUserRegistered } from "@/db/userQueries";
 
 export const registerUser = async({
