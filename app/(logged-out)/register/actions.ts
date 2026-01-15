@@ -2,7 +2,7 @@
 
 import { passwordMatchSchema } from "@/validation/passwordMatchSchema";
 import z from "zod";
-import { insertRegisteredUser, isUserRegistered } from "@/db/userQueries";
+import { insertRegisteredUser, isUserRegistered } from "@/db/queries-users";
 
 export const registerUser = async({
   email, 

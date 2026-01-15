@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Toaster } from "@/components/ui/sonner";
 // import { auth } from "@/auth";
 // import LogoutButton from "./(logged-in)/auth-components";
 
@@ -35,6 +36,7 @@ export default async function RootLayout({
           {/* <div>{ session?.user?.email ?
             <div><LogoutButton /> { session?.user?.email }</div>
             : "There is no session for the user" }</div> */}
+          <Toaster />
           { children }
         </>
       </body>

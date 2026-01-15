@@ -25,9 +25,14 @@ export default async function LoggedInLayout({
               <Link href="/change-password">Change Password</Link>
             </li>
           </ul>
-          <div>
-            <LogoutButton />
-          </div>
+          <main className="flex items-center">
+            <div className="p-2">
+              <p>{ session.userEmail }</p>
+            </div>
+            <div className="p-2">
+              <LogoutButton />
+            </div>
+          </main>
         </nav>
         <div className="flex-1 flex justify-center items-center ">
           { children }

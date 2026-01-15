@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from 'next-auth/providers/credentials';
-import { nextAuthUserByEmail } from "./db/userQueries";
+import { nextAuthUserByEmail } from "./db/queries-users";
 import { hashPasswordWithSalt } from "./lib/hash";
  
 export const { handlers, signIn, signOut, auth } = NextAuth({

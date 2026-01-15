@@ -8,9 +8,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useForm } from "react-hook-form";
-import { useState } from "react";
 import { changeUserPassword } from "./actions";
-import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 const formSchema = z.object({
   currentPassword: passwordSchema,
@@ -30,7 +29,6 @@ export default function ChangePasswordForm({ userEmail }: UserEmailProp) {
     }
   });
 
-  const router = useRouter();
   const handleSubmit = async (data: z.infer<typeof formSchema>) => {
     console.info('Starting changeUserPassword for: ', userEmail);
     const response = await changeUserPassword({
@@ -39,14 +37,19 @@ export default function ChangePasswordForm({ userEmail }: UserEmailProp) {
       password: data.password,
       passwordConfirm: data.passwordConfirm
     });
-    console.log('ChangePasswordForm->response: ', response);
+
     if (response?.error) {
       form.setError("root", {
         message: response?.message,
       });
     }
     else {
-      router.push('/my-account');
+      toast.success("Your password has been updated.", {
+        position: "top-center",
+        duration: 2000,
+        className: "bg-green-500 text-white",
+      });
+      form.reset();
     }
   };
 

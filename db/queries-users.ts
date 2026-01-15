@@ -21,7 +21,7 @@ type ErrorReturnType = {
 
 type UserPasswordReturnType = {
   success: boolean; 
-  id?: string; 
+  id?: number; 
   password?: string; 
   salt?: string; 
   message?: string
@@ -40,6 +40,8 @@ export async function isUserRegistered(email: string) {
     .select({count: count()})
     .from(users)
     .where(eq(users.email, email)); 
+
+  console.log('isUserRegistered->count: ',result[0].count);
   
   if (result[0].count > 0)
     return true;
@@ -137,7 +139,7 @@ export async function getUserByEmail(email: string)
     if (passwordParts.length === 2) {
       const fullUserInfo = {
         success: true,
-        email: email,
+        id: user.id as number,
         password: passwordParts[0],
         salt: passwordParts[1],
       }

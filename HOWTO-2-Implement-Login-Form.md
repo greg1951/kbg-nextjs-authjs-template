@@ -293,7 +293,7 @@ To better explain the various parts of the Credentials configuration, the code b
     ```tsx
     import NextAuth from "next-auth";
     import Credentials from 'next-auth/providers/credentials';
-    import { nextAuthUserByEmail } from "./db/userQueries";
+    import { nextAuthUserByEmail } from "./db/queries-users";
     import { hashPasswordWithSalt } from "./lib/hash";
     ```
     **Note:** The last two imports are custom functions created to simplify the code in the Credentials provider configuration. Consult the following bookmark for more information on what they do.

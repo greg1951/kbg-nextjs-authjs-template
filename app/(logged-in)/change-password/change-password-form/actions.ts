@@ -2,7 +2,7 @@
 
 import { passwordMatchSchema } from "@/validation/passwordMatchSchema";
 import z from "zod";
-import { updateUserPassword, getUserByEmail } from "@/db/userQueries";
+import { updateUserPassword, getUserByEmail } from "@/db/queries-users";
 import { passwordSchema } from "@/validation/passwordSchema";
 import { hashPasswordWithSalt } from "@/lib/hash";
 

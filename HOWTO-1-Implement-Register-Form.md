@@ -214,11 +214,11 @@ It is **important to review the notes** after the code below, as there were some
 'use server';
 
 import db from "@/db/drizzle";
-import { users } from "@/db/usersSchema";
+import { users } from "@/db/schema-users";
 import { passwordMatchSchema } from "@/validation/passwordMatchSchema";
 import z from "zod";
 import { hashUserPassword, splitHashedPassword } from "@/lib/hash";
-import { isUserRegistered } from "@/db/userQueries";
+import { isUserRegistered } from "@/db/queries-users";
 
 export const registerUser = async({
   email, 
@@ -280,7 +280,7 @@ export const registerUser = async({
   - Using `parse` would require a try-catch block which is more code to deal with.
 
 - Normally a `try-catch` block could wrap the insert functionality that would catch the *23505* constraint error when a duplicate email is detected, but that functionality did not work using drizzle. Instead, a query is run to check for the email in the users table.
-  - Created `@/db/userQueries.ts` file to run select on the email address.
+  - Created `@/db/queries-users.ts` file to run select on the email address.
   - Added logic to run the function (`isUserRegistered(email)`) and return an error on the duplicate email as a form validation error. 
 
 ### The handleSubmit Function
@@ -364,7 +364,7 @@ export default db;
 8. Build and run the app again and verify the results in the Terminal.
 
 ## Create Users Table
-The `@/db/usersSchema.ts` file contains the PostgreSql schema for the users table to be used in the app. After writing the statement to create the table then use the [drizzle push function](https://orm.drizzle.team/docs/tutorials/drizzle-with-neon) to create the schema on the remote database.
+The `@/db/schema-users.ts` file contains the PostgreSql schema for the `users` table to store registered user credentials. After writing the statement to create the table then use the [drizzle push function](https://orm.drizzle.team/docs/tutorials/drizzle-with-neon) to create the schema on the remote database.
 
 ```jsx
 import { serial, pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";

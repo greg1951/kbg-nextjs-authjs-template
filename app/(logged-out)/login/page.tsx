@@ -13,12 +13,14 @@ import Link from "next/link";
 import { passwordSchema } from "@/validation/passwordSchema";
 import { loginUser } from "./actions";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 const formSchema = z
   .object({ email: z.email(), password: passwordSchema });
 
 
 export default function Login() {
+  const [emailValue, setEmailValue] = useState("");
   const router = useRouter();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -27,6 +29,11 @@ export default function Login() {
       password: ""
     },
   });
+
+  function handleEmailChange(e) {
+    setEmailValue(e.target.value);
+  }
+
   const handleSubmit = async (data: z.infer<typeof formSchema>) => {
     // console.info('Login->handleSubmit: started...')
     const response = await loginUser({
@@ -44,9 +51,11 @@ export default function Login() {
     }
   };
 
+  console.log('Login->emailValue: ', emailValue);
+
   return (
     <main className="flex justify-center items-center min-h-screen">
-      <Card className="w-[350px]">
+      <Card className="w-[350]">
         <CardHeader>
           <CardTitle>Login</CardTitle>
           <CardDescription>Login to your account.</CardDescription>
@@ -62,7 +71,7 @@ export default function Login() {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input { ...field } type="email" />
+                        <Input { ...field } type="email" onChange={ handleEmailChange } value={ emailValue } />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -100,8 +109,13 @@ export default function Login() {
           </div>
           <div className="text-muted-foreground text-sm">
             Forgot password?{ "   " }
-            <Link href="/forgot" className="underline">
-              Reset password
+            <Link
+              href={ `/password-reset${ emailValue ? `?email=${ encodeURIComponent(emailValue) }`
+                : ""
+                }` }
+              className="underline"
+            >
+              Reset my password
             </Link>
           </div>
         </CardFooter>
