@@ -27,6 +27,7 @@ type UserPasswordReturnType = {
   message?: string
 }
 
+
 type AuthValidationReturnType = {
   id: number; 
   email: string; 
@@ -153,3 +154,31 @@ export async function getUserByEmail(email: string)
       }
     }
 }
+
+type EmailByIdReturnType = {
+  success: boolean; 
+  email?: string; 
+  message?: string
+}
+
+export async function getEmailByUserId(userId: number) 
+  : Promise<EmailByIdReturnType>  {
+  const [user] = await db
+    .select({
+      email: users.email,
+    })
+    .from(users)
+    .where(eq(users.id, userId)); 
+
+    if (!user) 
+      return {
+        success: false,
+        message: "There was no user found matching that id."
+      };
+    
+      return {
+        success: true,
+        email: user.email as string
+      };
+    };
+

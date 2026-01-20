@@ -1,9 +1,10 @@
 'use server';
 
 import { auth } from "@/auth";
-import { getUserByEmail, isUserRegistered } from "@/db/queries-users";
+import { getUserByEmail } from "@/db/queries-users";
 import { randomBytes } from "crypto";
 import { InsertRecordType, insertPasswordToken } from "@/db/queries-passwordResetTokens";
+import { mailer } from "@/lib/email";
 
 export const passwordReset = async (email: string) => {
   const session = await auth();
@@ -28,9 +29,21 @@ export const passwordReset = async (email: string) => {
     token: passwordResetToken,
     tokenExpiry: tokenExpiry
   }
-  console.log('passwordReset->insertRecord: ', insertRecord);
+  // console.log('passwordReset->insertRecord: ', insertRecord);
   const result = await insertPasswordToken(insertRecord);
-  console.log('insert result: ', result);
+  // console.log('insert result: ', result);
+
+  const resetLink=`${process.env.SITE_BASE_URL}/update-password?token=${insertRecord.token}`; 
+  const sendResult = await mailer.sendMail({
+    from: "test@resend.dev",
+    subject: "Your Password Reset Request",
+    to: email,
+    text: `You requested to reset your password. This link will expire in an hour. Click on the link below to reset it on our website:\n\n ${resetLink}`,
+  });
+
+  console.log('passwordReset->sendResult: ',sendResult)
+
+
   return result;
   
 }

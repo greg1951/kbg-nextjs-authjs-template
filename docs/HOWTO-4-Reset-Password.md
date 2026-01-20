@@ -6,9 +6,12 @@
    2. [The ResetPasswordForm Component](#the-resetpasswordform-component)
 5. [Step 4: Create the Password Reset Tokens Table](#step-4-create-the-password-reset-tokens-table)
 6. [Step 5: Create Insert into passwordResetTokens Table](#step-5-create-insert-into-passwordresettokens-table)
+7. [Step 6: Creat Server Actions Component](#step-6-creat-server-actions-component)
+8. [Step 7: Implement the Server Action Component](#step-7-implement-the-server-action-component)
+9. [Step 8: Test the Password Reset Request](#step-8-test-the-password-reset-request)
 
 # Overview
-Create a form to send a password reset URL to the user and provide the form to reset it. This functionality will be implemented inside the `@/app/(logged-out)/password-reset` route.
+Create a form to send a password reset URL to the user and provide the form to reset it. (The functionality here does NOT include sending the email.) This functionality will be implemented inside the `@/app/(logged-out)/password-reset` route.
 
 ![](./docs/reset-password-form.png)
 
@@ -18,10 +21,10 @@ The steps to be followed to implement the above form, send email and create the 
 2. Pass login form email address to reset form email address.
 3. Define content for `page.tsx` and `index.tsx` files. 
 4. Create the password_reset_tokens table.
-5. Create insert into passwordResetTokens table
-6. Create server actions function (`actions.ts`) to send email with reset email form URL.
-7. Create reset password form.
-8. Update password in users table.
+5. Create logic to insert into `passwordResetTokens` table.
+6. Create server actions component (`actions.ts`) to validate Password Reset.
+7. Implement the server action component.
+8. Test the password reset form.
 
 # Step 1: Create App Route Directories
 
@@ -34,11 +37,10 @@ The steps to be followed to implement the above form, send email and create the 
 5. In the same folder add a server side file (`'use server;` directive) named `actions.ts`.
    
 # Step 2: Pass Login Email
-If the user was on the login page but then clicked on the reset link there, carryover the email address from the login form to the reset form.
+If the user is on the login page and tried to login but failed, they but they can click on the reset password link on the form. The email address they entered should be carried over to the password reset form.
 
 1. Open `@/app/(logged-out)/login/page.tsx` file.
-2. In the function add the following above the *handleSubmit* function: `const email = form.getValues("email");`
-3. Scroll down to the form and update the `<Link>` for the reset password to the following fairly tricky string literal.
+2. Scroll down to the form and update the `<Link>` for the reset password to the following fairly tricky string literal.
 
     ```tsx
     ...
@@ -58,16 +60,14 @@ If the user was on the login page but then clicked on the reset link there, carr
 
 **Note**: After making the aforementioned changes entering a value in the email form field was not captured, the email variable was an empty string. The issue is there was no content being rendered by simply entering an email. The solution then is to use the React state hook to capture the email.
 
-3. **Backout** the `form.getValues` statement suggested on #2 above. 
-
-4. Enter the following useState hook At the top of the `Login` component.
+3. Enter the following `useState` hook At the top of the `Login` component.
 
     ```tsx
       export default function Login() {
         const [emailValue, setEmailValue] = useState("");
     ```
 
-5. Add an event handler function to capture the email form input value as state.
+5. Add an event handler function to capture the email form input value and to set the state variable.
 
     ```tsx
       function handleEmailChange(e) {
@@ -294,3 +294,82 @@ export async function insertPasswordToken(arg: InsertRecordType)
 
   - **Note 1**: The `InsertReturnType` type is exported here so it can be imported and used in the `action.ts` file that will pass the object to be inserted.
   - **Note 2**: A good insert returns *"not an error"* but it's consistent with the way it's being done.
+
+# Step 6: Creat Server Actions Component
+The `handleSubmit` function in the `index.tsx` is presently empty but will call the `passwordReset` function that is now to be defined in the `actions.ts` file, shown below.
+
+```tsx
+'use server';
+
+import { auth } from "@/auth";
+import { getUserByEmail } from "@/db/queries-users";
+import { randomBytes } from "crypto";
+import { InsertRecordType, insertPasswordToken } from "@/db/queries-passwordResetTokens";
+
+export const passwordReset = async (email: string) => {
+  /* Note 1 */
+  const session = await auth();
+  if (!!session?.user?.id) {
+    return {
+      error: true,
+      message: "You are already logged in"
+    }
+  };
+
+  /* Note 2 */
+  const userInfo = await getUserByEmail(email);
+  if (!userInfo.success) {
+    return;
+  }
+
+  /* Note 3 */
+  const passwordResetToken = randomBytes(32).toString('hex');
+  const tokenExpiry = new Date(Date.now() + 3600000); //3.6M ms is 1 hour
+  const insertRecord: InsertRecordType = {
+    userId: userInfo.id as number,
+    token: passwordResetToken,
+    tokenExpiry: tokenExpiry
+  }
+
+  /* Note 4 */
+  const result = await insertPasswordToken(insertRecord);
+  return result;
+  
+}
+```
+**Notes**:
+
+  - **Note 1**: The first validation is to check if there is a `session` object exists. if so, inform the user they are already logged in. 
+  - **Note 2**: If the user is NOT registered then simply exit without any message that could be interpreted to a hacker.
+  - **Note 3**: Generate a password reset `token` as a hex string and set a `tokenExpiry` of now + 1 hour
+  - **Note 4**: Insert the password reset token information into the `passwordResetTokens` table.
+
+# Step 7: Implement the Server Action Component
+Before testing the full reset password request what is needed is logic to call the `passwordReset` function in the `actions.ts` file.
+
+1. Open the `@/app/(logged-out)/password-reset/password-reset-form/index.tsx` file.
+2. The `handleSubmit` function is so far empty. The code below was added to call `passwordReset`.
+
+    ```tsx
+      const handleSubmit = async (data: z.infer<typeof formSchema>) => {
+        const response = await passwordReset(data.email);
+
+        if (response?.error) {
+          form.setError("email", {
+            message: response?.message,
+          });
+        }
+        else {
+          toast.success("Password reset has been submitted.", {
+            position: "top-center",
+            duration: 2000,
+            className: "bg-green-500 text-white",
+          });
+          form.reset();
+        }
+      };
+    ```
+3. 
+
+# Step 8: Test the Password Reset Request
+To this point we've updated the login page to link to a password reset form where certain validations were implemented and a password reset token created and added to the `passwordResetTokens` table.

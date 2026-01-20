@@ -1,8 +1,9 @@
 "use server";
 
-import { eq } from 'drizzle-orm';
 import { passwordResetTokens } from './schema';
 import db from './drizzle';
+import { eq } from 'drizzle-orm';
+import { getEmailByUserId } from './queries-users';
 
 export type InsertRecordType = {
   userId: number;
@@ -37,6 +38,7 @@ export async function insertPasswordToken(arg: InsertRecordType)
         message: "Error inserting into passwordResetTokens table"
       }
     };
+
     // console.log('insertPasswordToken->result: ',result);
     return {
       error: false
@@ -44,7 +46,85 @@ export async function insertPasswordToken(arg: InsertRecordType)
   }catch (e:unknown) {
       return {
         error: true,
-        message: "Likely duplicate found"
+        message: "Unknow error occured in the passwordResetTokens table"
       }
     }
   }
+
+export type PasswordTokenRecordType = {
+  token: string;
+}
+
+type GetPasswordTokenReturnType = {
+  error: boolean,
+  message?: string,
+  email?: string,
+  tokenExpiry?: Date,
+  isValidExpiry?: boolean
+}
+
+export async function getPasswordToken(arg: PasswordTokenRecordType)
+: Promise<GetPasswordTokenReturnType> {
+  const [passwordResetToken] = await db
+    .select()
+    .from(passwordResetTokens)
+    .where(eq(passwordResetTokens.token,arg.token));
+
+    if (!passwordResetToken) {
+      return {
+        error: true,
+        message: "Did not find token"
+      }
+    };
+
+    let isValid: boolean=false;
+    let validEmail;
+    const now = Date.now();
+    if (!!passwordResetToken.tokenExpiry && now < passwordResetToken.tokenExpiry.getTime()) {
+      isValid=true;
+      console.log('getPasswordToken=>userId: ', passwordResetToken.userId);
+      const result = await getEmailByUserId(passwordResetToken.userId);
+      if (!result.success) {
+        return {
+          error: false,
+          message: "Did not find id in users table"
+        };
+      };
+      validEmail=result.email;
+    }
+    
+
+    return {
+      error: false,
+      email: validEmail,
+      tokenExpiry: passwordResetToken.tokenExpiry as Date,
+      isValidExpiry: isValid
+    };
+};
+
+type RemoveRecordType = {userId: number}
+type RemoveReturnType = {
+  error: boolean,
+  message?: string
+}
+
+export async function removePasswordToken(userId: number)
+: Promise<RemoveReturnType> {
+  const result = await db
+    .delete(passwordResetTokens)
+    .where(eq(passwordResetTokens.userId,userId));
+
+    if (!result) {
+      return {
+        error: true,
+        message: "Password Token removal issue"
+      }
+    };
+
+    return {
+      error: false,
+    };
+  };
+      
+
+

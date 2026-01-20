@@ -30,12 +30,8 @@ export default function Login() {
     },
   });
 
-  function handleEmailChange(e) {
-    setEmailValue(e.target.value);
-  }
-
   const handleSubmit = async (data: z.infer<typeof formSchema>) => {
-    // console.info('Login->handleSubmit: started...')
+    console.info('Login->handleSubmit: started...')
     const response = await loginUser({
       email: data.email,
       password: data.password
@@ -50,8 +46,6 @@ export default function Login() {
       router.push('/my-account');
     }
   };
-
-  console.log('Login->emailValue: ', emailValue);
 
   return (
     <main className="flex justify-center items-center min-h-screen">
@@ -71,7 +65,7 @@ export default function Login() {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input { ...field } type="email" onChange={ handleEmailChange } value={ emailValue } />
+                        <Input { ...field } type="email" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -110,7 +104,7 @@ export default function Login() {
           <div className="text-muted-foreground text-sm">
             Forgot password?{ "   " }
             <Link
-              href={ `/password-reset${ emailValue ? `?email=${ encodeURIComponent(emailValue) }`
+              href={ `/password-reset${ form.getValues("email") ? `?email=${ encodeURIComponent(form.getValues("email")) }`
                 : ""
                 }` }
               className="underline"

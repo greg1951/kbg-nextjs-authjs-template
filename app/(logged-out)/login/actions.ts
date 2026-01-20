@@ -11,6 +11,7 @@ export const loginUser = async({
     password: string
     }
   ) => {
+    console.log('loginUser->email: ',email);
     const userSchema = z.object({
       email: z.email(),
       password: passwordSchema

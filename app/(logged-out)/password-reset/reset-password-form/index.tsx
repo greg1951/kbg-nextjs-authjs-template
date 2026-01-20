@@ -11,6 +11,8 @@ import { CardFooter } from "@/components/ui/card";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { passwordReset } from "./actions";
+import { useRouter } from "next/navigation";
+
 
 const formSchema = z.object({
   email: z.email()
@@ -18,6 +20,7 @@ const formSchema = z.object({
 
 export default function ResetPasswordForm() {
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -40,7 +43,7 @@ export default function ResetPasswordForm() {
         duration: 2000,
         className: "bg-green-500 text-white",
       });
-      form.reset();
+      router.push(`/password-reset/password-reset-sent?email=${ encodeURIComponent(form.getValues("email")) }`);
     }
   };
 
