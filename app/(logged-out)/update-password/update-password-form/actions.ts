@@ -45,9 +45,8 @@ export const updateResetPassword = async({
       };
 
       /* The returnType below will return the current password and salt*/
-      console.info('updateResetPassword->starting getUserByEmail...');
       const getReturn = await getUserByEmail(email);
-      console.info('updateResetPassword->getUserByEmail->returnType.success?', getReturn.success);
+      // console.info('updateResetPassword->getUserByEmail->returnType.success?', getReturn.success);
       if (!getReturn.success) {
         return {
           error: true,

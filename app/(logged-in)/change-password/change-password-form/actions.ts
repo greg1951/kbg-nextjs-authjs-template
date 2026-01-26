@@ -19,7 +19,7 @@ export const changeUserPassword = async({
   ) => {  
 
     try {
-      console.info('changeUserPassword->starting->email: ', email, ' currentPassword: ', currentPassword, 'password: ', password, 'passwordConfirm: ', passwordConfirm);
+      // console.info('changeUserPassword->starting->email: ', email, ' currentPassword: ', currentPassword, 'password: ', password, 'passwordConfirm: ', passwordConfirm);
       const formSchema = z.object({
         currentPassword: passwordSchema
       }).and(passwordMatchSchema);
@@ -33,9 +33,9 @@ export const changeUserPassword = async({
       };
 
       /* The returnType below will return the current password and salt*/
-      console.info('changeUserPassword->starting getUserByEmail...');
+      // console.info('changeUserPassword->starting getUserByEmail...');
       const returnType = await getUserByEmail(email);
-      console.info('changeUserPassword->getUserByEmail->returnType.success?', returnType.success);
+      // console.info('changeUserPassword->getUserByEmail->returnType.success?', returnType.success);
       if (!returnType.success) {
         return {
           error: true,
@@ -43,9 +43,9 @@ export const changeUserPassword = async({
         }
       }
 
-      console.log('changeUserPassword->currentPassword: ', currentPassword);
+      // console.log('changeUserPassword->currentPassword: ', currentPassword);
       const hashedPassword = hashPasswordWithSalt(currentPassword, returnType.salt as string);
-      console.log('changeUserPassword->hashedPassword: ', hashedPassword, ' returnType.password: ', returnType.password);
+      // console.log('changeUserPassword->hashedPassword: ', hashedPassword, ' returnType.password: ', returnType.password);
       if (hashedPassword !== returnType.password) {
         return {
           error: true,

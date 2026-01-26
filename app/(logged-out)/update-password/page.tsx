@@ -21,7 +21,7 @@ export default async function UpdateResetPassword({ searchParams }: {
       console.log('Error occurred retrieving passwordToken');
     }
 
-    console.log('UpdateResetPassword->result: ', result);
+    // console.log('UpdateResetPassword->result: ', result);
     // tokenExpiry = result.tokenExpiry;
     isValidExpiry = result.isValidExpiry;
     email = result.email;

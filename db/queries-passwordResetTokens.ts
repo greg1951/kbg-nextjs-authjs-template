@@ -82,7 +82,7 @@ export async function getPasswordToken(arg: PasswordTokenRecordType)
     const now = Date.now();
     if (!!passwordResetToken.tokenExpiry && now < passwordResetToken.tokenExpiry.getTime()) {
       isValid=true;
-      console.log('getPasswordToken=>userId: ', passwordResetToken.userId);
+      // console.log('getPasswordToken=>userId: ', passwordResetToken.userId);
       const result = await getEmailByUserId(passwordResetToken.userId);
       if (!result.success) {
         return {

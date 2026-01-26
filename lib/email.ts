@@ -1,8 +1,8 @@
 import nodemailer from 'nodemailer';
+import { SentMessageInfo } from 'nodemailer';
 
-export const mailer = nodemailer.createTransport({
+export const mailer: nodemailer.Transporter<SentMessageInfo> = nodemailer.createTransport({
   host: 'smtp.resend.com',
-  secure: false,
   port: 587,
   auth: {
     user: 'resend',

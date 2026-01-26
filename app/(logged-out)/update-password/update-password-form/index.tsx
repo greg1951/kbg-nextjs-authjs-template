@@ -11,7 +11,7 @@ import { updateResetPassword } from "./actions";
 import { toast } from "sonner";
 import { useRouter } from "next/router";
 import { useState } from "react";
-import { CardContent } from "@/components/ui/card";
+import { CardContent, CardDescription, CardFooter, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 
 const formSchema = passwordMatchSchema;
@@ -47,12 +47,18 @@ export default function UpdateResetPasswordForm({ userEmail }: UserEmailProp) {
     setSubmitted(true);
   };
 
-  console.log('UpdateResetPasswordForm->submitted?', submitted)
+  // console.log('UpdateResetPasswordForm->submitted?', submitted)
   if (submitted) {
     return (
       <main>
-        <CardContent>
-          <Link href='/login'>Login</Link>
+        <CardContent className="flex-col gap-1">
+          <p className="text-sm">Password reset was successful.</p>
+          <div className="text-muted-foreground text-sm">
+            Login to your account?{ " " }
+            <Link href="/login" className="underline">
+              Login
+            </Link>
+          </div>
         </CardContent>
       </main>
     )

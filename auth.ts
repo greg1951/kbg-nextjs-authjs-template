@@ -1,8 +1,14 @@
 import NextAuth from "next-auth";
+
 import Credentials from 'next-auth/providers/credentials';
-import { nextAuthUserByEmail } from "./db/queries-users";
-import { hashPasswordWithSalt } from "./lib/hash";
- 
+import { authValidation } from "./lib/auth-utils";
+
+type AuthRecord = {
+  email: string;
+  password: string;
+  token?: string;
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     jwt({token, user}) {
@@ -21,30 +27,30 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       credentials: {
         email: {},
         password: {},
+        token: {},
       },
       async authorize(credentials) {
-        console.info("running Credentials->authorize...");
-        const user = await nextAuthUserByEmail(credentials.email as string);
+        const userEmail = credentials.email;
+        const userPassword = credentials.password;
+        const token = credentials.token;
 
-        if (!user) {
-          throw new Error("user is null: Incorrect credentials");
+        const authRecord:AuthRecord = {
+          email: userEmail as string,
+          password: userPassword as string,
+          token: token as string,
+        };
+
+        // console.log('authorize->authRecord: ', authRecord);
+
+        const validationResult = await authValidation(authRecord);
+
+        // console.log('authorize->validationResult: ', validationResult);
+        if (validationResult.error) {
+          // throw new Error("Invalid credentails");
+          return null;
         }
-        else {
-          // console.log('Credentials->credentials.password: ', credentials.password, 'user.salt:', user.salt);
-          const hashedInputPassword = hashPasswordWithSalt(credentials.password as string, user.salt);
-          console.log('Credentials->user.password: ', user.password, ' hashedInputPassword: ', hashedInputPassword);
-          const passwordCorrect = user.password === hashedInputPassword? true : false;
-          if (!passwordCorrect) {
-            console.error('NEXT_REDIRECT error?');
-            throw new Error("Invalid credentials");
-          }          
-        }
-        /* returning "id" of type string is expected to get a JWT token */
-        return {
-          id: user.id.toString(),
-          email: user.email 
-        }
+        return  validationResult;      
       }
     })
   ],
-})
+});

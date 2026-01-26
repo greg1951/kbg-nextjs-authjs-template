@@ -1,34 +1,44 @@
 1. [Overview](#overview)
-2. [Installations](#installations)
+2. [Step 1: Create Next.js Project](#step-1-create-nextjs-project)
+3. [Step 2: Install Components](#step-2-install-components)
    1. [shdcn](#shdcn)
    2. [Drizzle and PostgreSql](#drizzle-and-postgresql)
    3. [Zod](#zod)
    4. [Cryptography](#cryptography)
-3. [Register Form Implementation](#register-form-implementation)
-   1. [Password Schema Validation](#password-schema-validation)
-      1. [passwordSchema.ts](#passwordschemats)
-      2. [passwordMatchSchema.ts](#passwordmatchschemats)
-      3. [Update page.tsx File](#update-pagetsx-file)
-   2. [Server Action Form Data](#server-action-form-data)
-      1. [The registerUser Function](#the-registeruser-function)
-      2. [The handleSubmit Function](#the-handlesubmit-function)
-4. [Saving User Data](#saving-user-data)
+4. [Step 3: Set Up PostgreSql Neon Database](#step-3-set-up-postgresql-neon-database)
    1. [Install and Configure](#install-and-configure)
    2. [Create Users Table](#create-users-table)
    3. [Create Schema in Neon PostgreSql](#create-schema-in-neon-postgresql)
    4. [Confirm Table in Neon](#confirm-table-in-neon)
    5. [Adding Registered User with Hashed Password](#adding-registered-user-with-hashed-password)
+5. [Step 4: Register Account Implementation](#step-4-register-account-implementation)
+   1. [App Router Overview](#app-router-overview)
+   2. [Register Account Page](#register-account-page)
+   3. [Register Account Form](#register-account-form)
+   4. [Server Action Form Data](#server-action-form-data)
 
 
 ---
 # Overview
-This markdown file will document setting up a form to register new users and add them to a users table that resides in a PostgreSql database on the Neon platform.
+This How-To markdown file will document setting up a form to register account new users form and then add the new user to a `users` table that resides in a PostgreSql database on the Neon platform. (See the [markdown index](../README-HowToGuides.md) for a list of all the How-To documents.)
 
-# Installations
-There are a ton of libraries used in the project. Having the installations defined in one place is good.
+Here are the development steps this How-To guide will follow.
+1. Create a Next.js project.
+2. Install many libraries in use by the project referenced here.
+3. Create an account for a PostgreSql database on the Neon platform.
+4. Create Register Account form.
 
-The `npx` command to create the project will prompt you whether to use it and it was selected. Refer to the [Tailwind CSS](https://tailwindcss.com/) for installation and docs on the classes. Install the VS Code **Tailwind CSS Intellisense extension** which is amazing.
+# Step 1: Create Next.js Project
+Run the `npx` command to create the project: `npx create-next-app@latest`. You will be prompted to enter the app name. 
 
+There are a number of 3rd party libraries used in the project created by the above prompt (Typescript and Tailwindcss). **Both are strongly recommended**. 
+- Good Tailwindcss resources:
+  - Refer to the [Tailwind CSS](https://tailwindcss.com/) for installation and docs on the classes. 
+  - Install the VS Code **Tailwind CSS Intellisense extension** which is amazing.
+- Get comfortable with **Typescript** as it really does help to tighten up the code you write.
+
+# Step 2: Install Components
+There's a long list of components. Be vigilant as changes are introduced that may not work the same depending on what's in the latest version. Consult the `@/package.json` for the versions in this GitHub branch.
 
 ## shdcn
 The shadcn UI component library was used extensively throughout. The installs below were done. 
@@ -39,8 +49,8 @@ npx shadcn@latest add form
 npx shadcn@latest add card
 npx shadcn@latest add card
 npx shadcn@latest add input
+npx shadcn@latest add input-otp
 ```
-
 **Note**: The shadcn installations will create the components in the `@/components/ui` project directory. This means you own them and can modify them as needed (it was not required).
 
 ## Drizzle and PostgreSql
@@ -53,277 +63,20 @@ npm install drizzle-kit@latest
 npm i pg
 npm i @types/pg
 ```
-
 ## Zod
-The Zod library provides useful way to create javascript and typescript schema. It also has a very useful collection of validations available for various types. Zod is running Javascript under the covers so Zod validations will require the file to be rendered (run) client side.
+The Zod library provides useful way to create javascript and typescript schema. It also has a very useful collection of validations available for various types. 
 
 ```bash
 npm i zod
 ```
-
 ## Cryptography
-For hashing of the password the `bcryptjs` library was used.
+For password hashing the `bcryptjs` library was used. Run both commands below.
 
 ```bash
 npm i bcryptjs
 npm i --save-dev @types/bcryptjs
 ```
-# Register Form Implementation
-The form that resides in `@/app/register/page.tsx` is built from the shadcn Form component but Form relies on other components to implement it. (The form below is a smaller portion of the form that will be implemented.)
-
-```javascript
-'use client';
-...
-import { z } from 'zod';
-const formSchema = z.object({
-  email: z.email(),
-  password: z.string().min(5),
-  passwordConfirm: z.string(),
-});
-
-export default function Register() {
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-      passwordConfirm: ""
-    }
-  });
-  return (
-    <main className="flex justify-center items-center min-h-screen">
-      <Card className="w-[350px]">
-        <CardHeader>
-          <CardTitle>Register</CardTitle>
-          <CardDescription>Register for a new account.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form { ...form }>
-            <form onSubmit={ form.handleSubmit(handleSubmit) }>
-              <FormField 
-                control={ form.control } 
-                name="email" 
-                render={ ({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input { ...field } type="email" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-    </main>
-  )
-```
-**Notes:**
-
-- Given the javascript validation performed by Zod, and the `useForm` React hook in use, a `use client` directive is needed at the top of the file.
-
-- The `<main>` element references Tailwind CSS classes. 
-
-  - **Note**: Be sure to install the **Tailwind CSS Intellisense** extension.
-
-  - When the project was initially created and Tailwind CSS was selected, a `@/app/global.css` was created. 
-
-  - The referenced classes will center the form in the vertical and horizontal center.
-
-- The form is wrapped in a `Card` component, consisting of `CardHeader` and `CardContent` child components.
-
-- A spread operator is used on the `<Form>` to reference a form type define earlier in the file that consists of the following.
-
-- Zod is used to define and validate the `formSchema` typescript schema. 
-
-- A `form` constant is defined for the useForm hook but which makes use of generics to specify the typescript schema to be used.
-
-- A spread operator (`...form`) indicates the object that `<Form>` implements inside `<CardContent>`.
-
-- The control attribute defined in `<FormField control={ form.control } name={email}` is optional but it allow the `name` attribute that follows to identify type properties.
-
-## Password Schema Validation
-The previous form example performed simple validations on string input. The requirement however is to validate the entered passwords are both the same. 
-
-To do this, two new validations will be created in `@/validation/passwordSchema.tx` and `@/validation/passwordMatchSchema`. The latter builds on the former so let's show it first.
-
-### passwordSchema.ts
-
-```javascript
-import {z} from 'zod';
-
-export const passwordSchema = z
-  .string()
-  .min(5, "Password should constain at least 5 characters");
-```
-The `page.tsx` was updated to reference this validation.
-
-### passwordMatchSchema.ts
-
-The previous validation was imported and then a custom validation object is exported for the passwordConfirm validation. 
-
-```javascript
-import { z } from 'zod';
-import { passwordSchema } from './passwordSchema';
-
-export const passwordMatchSchema = z
-  .object( {
-    password: passwordSchema,
-    passwordConfirm: z.string(),
-  })
-  .superRefine((data,  ctx) => {
-    if (data.password !== data.passwordConfirm) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["passwordConfirm"],
-        message: "Passwords do not match"
-      })
-    }
-  })
-  ```
-**Notes:**
-
-- The exported object references password and passwordConfirm, which do not need to be defined in the `formSchema` variable in the `page.tsx` file.
-
-- The exported Zod validation object will utilize a Zod validation library (e.g. method `superRefine()`) that provides a means to do complex, cross-field validation. 
-  
-- The `superRefine` method takes two arguments, one for the data and the second for the validation context.
-
-### Update page.tsx File
-The formSchema variable must be modified to use the above schema validations. Since the `passwordMatchSchema.ts` incorporates the `passwordSchema.ts` validation, only the former needs to be mentioned in the updated formSchema statement.
-
-```javascript
-import { passwordMatchSchema } from "@/validation/passwordMatchSchema";
-const formSchema = z.object({
-  email: z.email()
-}).and(passwordMatchSchema);
-```
-
-## Server Action Form Data
-As the form and associated validations are operational, what remains now is to post the form as a part of a server action. 
-
-### The registerUser Function
-
-There are numerous ways to organize server actions but one way used here is to create the `actions.ts` file in the same directory where the form exists, i.e. `@/app/register/page.tsx`.
-
-It is **important to review the notes** after the code below, as there were some challenges implementing the function.
-
-```javascript
-'use server';
-
-import db from "@/db/drizzle";
-import { users } from "@/db/schema-users";
-import { passwordMatchSchema } from "@/validation/passwordMatchSchema";
-import z from "zod";
-import { hashUserPassword, splitHashedPassword } from "@/lib/hash";
-import { isUserRegistered } from "@/db/queries-users";
-
-export const registerUser = async({
-  email, 
-  password, 
-  passwordConfirm}: {
-    email: string,
-    password: string, 
-    passwordConfirm: string
-    }
-  ) => {
-    try {
-      const newUserSchema = z.object({
-        email: z.email()
-      }).and(passwordMatchSchema);
-      
-      const newUserValidation = newUserSchema.safeParse({email, password, passwordConfirm});
-      if (!newUserValidation.success) {
-        return {
-          error: true,
-          message: newUserValidation.error.issues[0]?.message ?? "An error occurred",
-        };
-      };
-
-      const isRegistered = await isUserRegistered(email);
-      if (isRegistered) {
-        return {
-          error: true,
-          message: `An account is already registered for this email.`
-        }
-      }
-
-      const result = await insertRegisteredUser(email, password);
-
-    } catch (e: unknown) {
-      if (e instanceof Error && e.code === "23505") {
-        return {
-          error: true,
-          message: "An accound is already registered with that emaill"
-        };
-      }
-      return {
-        error: true,
-        message: "An unknown error occured."
-      }
-    }    
-  };
-```
-
-**Notes:**
-
-- The `registerUser` function expects three arguments. As shown below, the server function will *eventually* implement logic to insert the registered user in a database.
-
-- The server function runs only the server-side and is asynchronous.
-
-- There are three input parameters they are defined with types to ensure type safety.
-
-- In the callback, Zod `safeParse` method is used rather than `parse`. 
-  - The latter will throw an error if invalid while safeParse will return a boolean if invalid. 
-  - Using `parse` would require a try-catch block which is more code to deal with.
-
-- Normally a `try-catch` block could wrap the insert functionality that would catch the *23505* constraint error when a duplicate email is detected, but that functionality did not work using drizzle. Instead, a query is run to check for the email in the users table.
-  - Created `@/db/queries-users.ts` file to run select on the email address.
-  - Added logic to run the function (`isUserRegistered(email)`) and return an error on the duplicate email as a form validation error. 
-
-### The handleSubmit Function
-
-Shown below is the handleSubmit function run on the form submission in the `page.tsx` file. 
-
-It is important to review the notes after the code snippet for handleSubmit shown below as there were some challenges implementing it.
-
-```tsx
-...
-  const [submitted, setSubmitted] = useState(false);
-  const handleSubmit = async (data: z.infer<typeof formSchema>) => {
-    const response = await registerUser({
-      email: data.email,
-      password: data.password,
-      passwordConfirm: data.passwordConfirm
-    });
-
-    if (response?.error) {
-      setSubmitted(false);
-      form.setError("email", {
-        message: response?.message,
-      });
-    }
-    else {
-      setSubmitted(true);
-    }
-  };
-
-  return (
-    <main className="flex justify-center items-center min-h-screen">
-      { submitted ? (...)})
-...
-```
-**Notes**:
-
-- It was necessary to implement a state (submitted) variable as the `form.formState.isSubmitSuccessful` did not work. Rather than use the formState tertiary operation in the return statement, the `submitted` state variable was used instead.
-
-- The `submitted` state variable default is false, such that if the email is already registered then [an Email error can be reported in the UI as shown here.](./docs/account-already-exists-message.png)
-
-- If the form was submitted then a `Card` component is used to provide a button to take them to the login page. Otherwise, if not submitted then the `registration Card` is rendered. 
-
-# Saving User Data
+# Step 3: Set Up PostgreSql Neon Database
 
 The `registerUser` server function will be updated to insert the registered user in a **PostgreSql** (v17) database table hosted in **[Neon](https://neon.tech)**. 
 
@@ -340,12 +93,12 @@ psql 'postgresql://neondb_owner:**********@ep-red-brook-ad6z3qmu-pooler.c-2.us-e
 
 5. Create `@/.env.local` file (development mode) and paste in the database URL parameter (password obfuscated) as an environment variable.
 
-```jsx
+```tsx
 NEON_DATABASE_URL="postgresql://neondb_owner:*************@ep-red-brook-ad6z3qmu-pooler.c-2.us-east-1.aws.neon.tech/next-credentials-db?sslmode=require&channel_binding=require"
 ```
 6. Create new folder and file (`@/db/drizzle.ts`) file to export the drizzle database connection to neon. 
 
-```jsx
+```tsx
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 
@@ -356,7 +109,7 @@ export default db;
 ```
 7. Test the connection by adding this to the end of the registerUser function.
 
-```jsx
+```tsx
   ...
     const result = db.execute('select 1');
     console.log('action->registerUser->result: ', result);
@@ -366,7 +119,7 @@ export default db;
 ## Create Users Table
 The `@/db/schema-users.ts` file contains the PostgreSql schema for the `users` table to store registered user credentials. After writing the statement to create the table then use the [drizzle push function](https://orm.drizzle.team/docs/tutorials/drizzle-with-neon) to create the schema on the remote database.
 
-```jsx
+```tsx
 import { serial, pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
@@ -384,7 +137,7 @@ The drizzle push command is a useful feature when needing to test new schema cre
    
 2. The example below is an example of a simple config. More elaboration is required for [production pushes](https://orm.drizzle.team/docs/kit-overview#prototyping-with-db-push).
 
-```jsx
+```tsx
 import "dotenv/config";
 import * as dotenv from "dotenv";
 import { defineConfig } from 'drizzle-kit';
@@ -406,7 +159,7 @@ export default defineConfig({
 
 - The `import "dotenv/config";`  statement loads environment variables into Node.js `process.env` at runtime.
 
-- The `import * as dotenv from "dotenv"` allows the variables to be loaded from the `dotenv.config()` operation. There the path reference to **.env.local** is loaded into process.env.
+- The `import * as dotenv from "dotenv"` allows the variables to be loaded from the `dotenv.config()` operation. There the path reference to **.env.local** is loaded into process.env when the app is started.
 
 - Call `dotenv.config()` as the first line in your entry file (before any other code that uses environment variables) to ensure they are loaded.
 
@@ -461,3 +214,191 @@ export function verifyPassword(storedPassword:string, suppliedPassword:string) {
 4. The `hashUserPassword` function will create a base64 encoded password string that includes the unique salt used to hash the password. 
 
 5. The password and salt are separated by a colon (`:`). Both are needed when confirming the password of an already registered user.
+
+
+# Step 4: Register Account Implementation
+
+## App Router Overview
+As the Next.js app router relies on how the application pages are structured, review the diagram below.
+- In an application, there are pages you have access to (`(logged-in)`) and pages you do not (`(logged-out)`). 
+  - In this application, pages are provided for user who are not logged in yet: to login, or to register for an account, or to reset your password.
+  - Once you are logged in, then you have access to other pages where you can change your password or enable Two-Factor Authentication (2FA).
+- This authentication app has many forms to accomplish the above. 
+  - The client pages that are rendered for a function are contained in `page.tsx` files.
+  - The client forms used by the above pages are implemented in form folders as `index.tsx` files.
+  - The forms need access to server-side components and functions and they are contained in `actions.ts` files.
+- Interspersed are `layout.tsx` file which provide a common layout but also serve to enforce page protection via session authentication. (More on this later!) 
+
+  ![](./folder-file-structure.png)
+
+## Register Account Page
+The page that renders the account registration is built using the `shadcn` components installed earlier. The form however, is located in the `index.tsx` file, as mentioned in the oveview. 
+
+**source file**: *@/app/logged-out/register/page.tsx* 
+
+```tsx
+  'use client';
+
+  import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
+    from "@/components/ui/card";
+  import Link from "next/link";
+  import RegisterAccountForm from "./register-form";
+
+  export default function Register() {
+    return (
+      <main className="flex justify-center items-center min-h-screen">
+        <Card className="w-[350]">
+          <CardHeader>
+            <CardTitle>Register Account</CardTitle>
+            <CardDescription>Register for a new account.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RegisterAccountForm />
+          </CardContent>
+          <CardFooter className="flex-col gap-2">
+            <div className="text-muted-foreground text-sm">
+              Already have an account?{ " " }
+              <Link href="/login" className="underline">
+                Login
+              </Link>
+            </div>
+          </CardFooter>
+        </Card>
+      </main>
+    );
+  }
+```
+**Notes**: 
+
+- *Here at the outset we are structuring the project so the client side components are lightweight, delegating server-side functionality to the `actions.ts` components.* 
+- *Although the `RegisterAccountForm` is client-side and it is contained in the `index.tsx` file associated with the `actions.ts` file in the same form directory.*
+
+
+
+## Register Account Form
+In the **code snippet** below only the more interesting aspects of the form are covered. Reference the notes after the code block.
+
+**source file**: *`@/app/logged-out/register/register-form/index.tsx`* <<< reference the full file for the entire form
+
+```tsx
+  ...
+  /* NOTE 1 */
+  const formSchema = z
+    .object({
+      email: z.email()
+    })
+    .and(passwordMatchSchema);
+
+  export default function RegisterAccountForm() {
+    const router = useRouter();
+    const form = useForm<z.infer<typeof formSchema>>({
+      resolver: zodResolver(formSchema),
+      defaultValues: {
+        email: "",
+        password: "",
+        passwordConfirm: ""
+      },
+    });
+    /* NOTE 2 */
+    const handleSubmit = async (data: z.infer<typeof formSchema>) => {
+      const response = await registerUser({
+        email: data.email,
+        password: data.password,
+        passwordConfirm: data.passwordConfirm
+      });
+
+      if (response?.error) {
+        form.setError("email", {
+          message: response?.message,
+        });
+      }
+      else {
+        router.push(`/login${ form.getValues("email") ? `?email=${ encodeURIComponent(form.getValues("email")) }` : "" }`)
+      }
+    }
+  ...
+```
+**Notes**:
+
+  - **Note 1**: *Zod is used to validate the content in the form.*
+  - **Note 2**: *The `registerUser` function in the associated server actions component will add the register the user email and password in the `users` table.*
+
+## Server Action Form Data
+As the form and associated validations are operational, what remains now is to post the form as a part of a server action. 
+
+**source file**: *`@/app/logged-out/register/register-form/actions.tsx`*
+
+```tsx
+  'use server';
+
+  import { passwordMatchSchema } from "@/validation/passwordMatchSchema";
+  import z from "zod";
+  import { insertRegisteredUser, isUserRegistered } from "@/db/queries-users";
+
+  export const registerUser = async({
+    email, 
+    password, 
+    passwordConfirm}: {
+      email: string,
+      password: string, 
+      passwordConfirm: string
+      }
+    ) => {
+      try {
+      const newUserSchema = z.object({
+        email: z.email()
+      }).and(passwordMatchSchema);
+      
+      const newUserValidation = newUserSchema.safeParse({email, password, passwordConfirm});
+      if (!newUserValidation.success) {
+        return {
+          error: true,
+          message: newUserValidation.error.issues[0]?.message ?? "An error occurred",
+        };
+      };
+      const isRegistered = await isUserRegistered(email);
+      if (isRegistered) {
+        return {
+          error: true,
+          message: `An account is already registered for this email.`
+        }
+      }
+
+      const insertResult = await insertRegisteredUser(email, password);
+      if (!insertResult) {
+        return {
+          error: true,
+          message: "Registered user insert failed"
+        }
+      }
+      
+      } catch (e: unknown) {
+        if (e instanceof Error && e.code === "23505") {
+          return {
+            error: true,
+            message: "An accound is already registered with that email"
+          };
+        }
+        return {
+          error: true,
+          message: "An unknown error occured."
+        }
+      }    
+    };
+```
+
+**Notes:**
+
+- The `registerUser` function expects three arguments. As shown below, the server function will *eventually* implement logic to insert the registered user in a database.
+
+- The server function runs only the server-side and is asynchronous.
+
+- There are three input parameters they are defined with types to ensure type safety.
+
+- In the callback, Zod `safeParse` method is used rather than `parse`. 
+  - The latter will throw an error if invalid while safeParse will return a boolean if invalid. 
+  - Using `parse` would require a try-catch block which is more code to deal with.
+
+- Normally a `try-catch` block could wrap the insert functionality that would catch the *23505* constraint error when a duplicate email is detected, but that functionality did not work using drizzle. Instead, a query is run to check for the email in the users table.
+  - Created `@/db/queries-users.ts` file to run select on the email address.
+  - Added logic to run the function (`isUserRegistered(email)`) and return an error on the duplicate email as a form validation error. 

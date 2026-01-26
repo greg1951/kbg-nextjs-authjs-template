@@ -1,231 +1,292 @@
 1. [Overview](#overview)
 2. [Login Implemenation Steps Summary](#login-implemenation-steps-summary)
-3. [Step 1: Create the Login Form and Server Action](#step-1-create-the-login-form-and-server-action)
-   1. [Login Form](#login-form)
-   2. [Server Action](#server-action)
-4. [Step 2: Add Auth.js to Project](#step-2-add-authjs-to-project)
+3. [Step 1: Create Route Groups and Layouts](#step-1-create-route-groups-and-layouts)
+4. [Step 2: Create the Login Form and Server Action](#step-2-create-the-login-form-and-server-action)
+   1. [Login Form Page](#login-form-page)
+   2. [Login Form](#login-form)
+   3. [Login Server Action](#login-server-action)
+5. [Step 3: Add Auth.js to Project](#step-3-add-authjs-to-project)
    1. [Next Auth vs. Auth.js](#next-auth-vs-authjs)
    2. [Add Auth.js to Project](#add-authjs-to-project)
-5. [Step 3: Seed Initial Auth.js Files](#step-3-seed-initial-authjs-files)
-6. [Step 4: Configure Credentials Provider](#step-4-configure-credentials-provider)
-   1. [Configure auth.ts Provider](#configure-authts-provider)
-   2. [Configure auth.ts Callbacks](#configure-authts-callbacks)
-7. [Step 5: Create Route Groups and Layouts](#step-5-create-route-groups-and-layouts)
-8. [Step 6: Create Logout Server Function](#step-6-create-logout-server-function)
-9. [Step 7: Login Form Session signIn](#step-7-login-form-session-signin)
-10. [Step 8: Implement Temporary Session Logic](#step-8-implement-temporary-session-logic)
-11. [Step 9: Implement Page Protection](#step-9-implement-page-protection)
-12. [Step 10: Backout Temporary Test Session Logic](#step-10-backout-temporary-test-session-logic)
-13. [Step 11: Embellish the my-account Page](#step-11-embellish-the-my-account-page)
+6. [Step 4: Seed Initial Auth.js Files](#step-4-seed-initial-authjs-files)
+7. [Step 5: Configure Credentials Provider](#step-5-configure-credentials-provider)
+   1. [Configure Credentials Provider](#configure-credentials-provider)
+8. [Step 6: Implement Logout Functionality](#step-6-implement-logout-functionality)
+   1. [Create Logout Client Component](#create-logout-client-component)
+   2. [The Logout Server Action](#the-logout-server-action)
+9. [Step 7: Implement Page Protection](#step-7-implement-page-protection)
 
 ---
 # Overview
-This implementation guide logically follows the implementation of the [user registration form](./Implement-Register-Form.md). Make sure the registration form is able to register a user email and password into the users table. This guide assumes this part of the application works as this guide will document setting up the user login form (shown below) which entails: 
+This How-To guide logically follows the implementation of the [user registration form](./Implement-Register-Form.md).  (See the [markdown index](../README-HowToGuides.md) for a list of all the How-To documents.)
+
+Much of this How-To guide addresses the configuration of the NextAuth `@/auth.ts` file. The user functionality implemented encompasses only the email/password signIn and **does not address 2FA**. How-To guides 7 and 8 document the 2FA setup in the project.
 
 - Retrieving the user credentials from the users table
-- Validating the password and use Auth.js to then establish an authorization session. 
-- It assumes the user has already registered their email and hashed password via the registration process. 
+- Validating the password and the use Auth.js to signIn functionality to establish an authorization session. (The link to reset the password is implemented in How-To guide 4.)
 
-![](./docs/login-form.png)
+  ![](./login-form.png)
 
 # Login Implemenation Steps Summary
-Implementing the Auth.js security for a credential provider is tedious, arguably involving more work than an Oauth implementation.
+Implementing the NextAuth security for a *credential provider* is tedious, arguably involving more work than an Oauth implementation. Baby steps!
 
-1. Create the login form and server action
-2. Add Auth.js to the project
-3. Seed Various Auth.js Files
-4. Configure the Credentials provider
-5. Create app route groups and layouts
-6. Create a Logout server function
-7. Add Auth.js to Login form Server Actions
-8. Implement temporary test Session logic
-9. Implement page protection
-10. Backout Temporary test Session logic
-11. Embellish the my-account Page
+1. Create app route groups and layouts
+2. Create the login form and server action
+3. Add Auth.js to the project
+4. Seed Various Auth.js Files
+5. Configure the Credentials provider
+6. Create app route groups and layouts
+7. Create a Logout server function
+8. Add Auth.js to Login form Server Actions
+9. Implement temporary test Session logic
+10. Implement page protection
+11. Backout Temporary test Session logic
+12. Embellish the my-account Page
 
-# Step 1: Create the Login Form and Server Action
-Much of what was done for the register account form can be duplicated to create the login page functionality. The login functionality will:
+# Step 1: Create Route Groups and Layouts
+The application routes are going to fall into one of two categories: logged in or logged out. As such, route groups can be used as they provide the ability for pages to share layouts and are readily identified because the folder names within the `app` directory are enclosed in parentheses (e.g. `(logged-in)`, `(logged-out)`).
 
-## Login Form
+![](./login-route-groups.png)
 
-- include the server action file import (to be created below)
-- Remove the confirmPassword field from the form.
+**Note**: *The login functionality falls into the (logged-out) app route.*
+
+
+The layout files provide a means to enforce login session rules. For example, all of the page.tsx files within the `(logged-in)` group require an authorization session. The snippet below resides in the `layout-tsx` file. If there is no session, then redirect the user to the login page.
+
+**source file**: *`@/app/(logged-in)/layout-tsx`*
 
 ```tsx
-'use client';
-
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from 'zod';
-import Link from "next/link";
-import { passwordSchema } from "@/validation/passwordSchema";
-import { loginUser } from "./actions";
-import { useRouter } from "next/navigation";
-
-const formSchema = z
-  .object({ email: z.email(), password: passwordSchema });
-
-export default function Login() {
-  const router = useRouter();
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: "",
-      password: ""
-    },
-  });
-    const handleSubmit = async (data: z.infer<typeof formSchema>) => {
-    const response = await loginUser({
-      email: data.email,
-      password: data.password
-    });
-
-    if (response?.error) {
-      form.setError("root", {
-        message: response?.message,
-      });
-    }
-    else {
-      router.push('/my-account');
-    }
-  };
-
-  return (
-    <main className="flex justify-center items-center min-h-screen">
-      <Card className="w-[350px]">
-        <CardHeader>
-          <CardTitle>Login</CardTitle>
-          <CardDescription>Login to your account.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form { ...form }>
-            <form onSubmit={ form.handleSubmit(handleSubmit) }>
-              <fieldset disabled={ form.formState.isSubmitting } className="flex flex-col gap-2">
-                <FormField
-                  control={ form.control }
-                  name="email"
-                  render={ ({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input { ...field } type="email" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  ) }
-                />
-                <FormField
-                  control={ form.control }
-                  name="password"
-                  render={ ({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <Input { ...field } type="password" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  ) }
-                />
-                { !!form.formState.errors.root?.message &&
-                  <FormMessage>
-                    { form.formState.errors.root.message }
-                  </FormMessage>
-
-                }
-                <Button type="submit">Login</Button>
-              </fieldset>
-            </form>
-          </Form>
-        </CardContent>
-        <CardFooter className="flex-col gap-2">
-          <div className="text-muted-foreground text-sm">
-            Don&apos;t have an account?{ "   " }
-            <Link href="/register" className="underline">
-              Register
-            </Link>
-          </div>
-          <div className="text-muted-foreground text-sm">
-            Forgot password?{ "   " }
-            <Link href="/forgot" className="underline">
-              Reset password
-            </Link>
-          </div>
-        </CardFooter>
-      </Card>
-    </main>
-  )
-}
+...
+export default async function LoggedInLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect("/login");
+  }...}
+  return (...)
 ```
-**Notes***:
 
-- `shadcn` components installed in the `@/components/ui` directory are used extensively.
 
-- Although the UI components clutter the above code block, it is the `handleSubmit` function that is more important.
-  - The `loginUser` function resides in the server `actions.ts` file and its job is to validate the the user exists in the users table. 
-  - If the user is registered in the users table then confirm the password is correct. 
-  - If the user does not exist or the password is incorrect then an error is returned and shown on the login form.
+# Step 2: Create the Login Form and Server Action
+The main points of the Login form and its associated server actions are shown as snippets here, to point out the more important parts.
 
-## Server Action
-The `@/app/(logged-in)/login/actions.ts` file will simply validate the input provided in the credentials conforms to the schema. The validation that the user is in fact registered in the users table and that the password matches is a validation performed in the `@/auth.ts` file [covered further down in the document](#configure-authts-provider).
+## Login Form Page
+Much of what was done for the Register account form can be duplicated to create the login page functionality.
+
+**source file**: *`@/app/(logged-out)/login/page.tsx`*
 
 ```tsx
-'use server';
+  'use client';
 
-import z from "zod";
-import { passwordSchema } from "@/validation/passwordSchema";
-import { signIn } from "@/auth"; /* Used by commented code at end of this file */
+  /* Note 1 */
+  import LoginForm from "./login-form";
 
-export const loginUser = async({
-  email, 
-  password}: {
-    email: string,
-    password: string
-    }
-  ) => {
-    const userSchema = z.object({
-      email: z.email(),
-      password: passwordSchema
-    });
-    
-    const userValidation = userSchema.safeParse({email, password});
-    if (!userValidation.success) {
-      return {
-        error: true,
-        message: userValidation.error.issues[0]?.message ?? "An error occurred in validation",
-      };
-        
-      }
-      /* uncomment code below after auth.ts is configured in Step 4: Configure the Credentials provider */
-      /*
-      try {
-        console.info('Starting Credentails signIn...');
-        await signIn("credentials", {
-          email,
-          password,
-          redirect: false
-        })
-        console.info('Finished Credentails signIn...');
-      } catch(e) {
-        return {
-          error: true,
-          message: "Incorrect email or password"
-        }
-    };  
-    */  
+  export default function Login() {
+    /* Note 2 */
+    return (
+      <LoginForm />
+    )
   }
-  ```
+```
 **Notes**:
 
-- Zod validation for email schema is defined by its type. Additional Zod validation is provided by the `@/validation/passwordSchema.ts` file.
-- The `safeParse` method provides a return boolean that indicates whether an error occurred. (The `parse` method will throw an error.) 
-- At the end of the file is code that is activated **after** the auth.ts Proivder is configured, as it provides access to the `signIn` function of NextAuth.
+  -**Note 1**: *Every page that implements a form delegates that functionality to a separate `index.tsx` file in the form directory (e.g. `@/app/(logged-out)/login-form/index.tsx`).*
 
-# Step 2: Add Auth.js to Project
+  -**Note 2**: *The form itself contains all of the requisite client side components to validate the credentials. The actual login is performed by the `auth.ts` signIn interface which runs the authorize function [to be configured later)](#configure-authts-provider).*
+
+## Login Form
+The pattern to implement a form would require: a form directory that contains a client form component (`index.tsx`) and a server actions component (`actions.ts`) be used. Any server side components that need to be accessed are done in the server actions component.
+
+**source file**: *`@/app/(logged-out)/login/login-form/index.tsx`* <<< The is full-monty implementation. The snippet below is abbreviated.
+
+```tsx
+  ...
+  export default function LoginForm() {
+    /* NOTE 1 */
+    const [email, setEmail] = useState(urlEmail);
+    const [step, setStep] = useState(1);
+    const [emailAuthError, setEmailAuthError] = useState("");
+    const router = useRouter();
+
+    const form = useForm<z.infer<typeof formSchema>>({
+      resolver: zodResolver(formSchema),
+      defaultValues: {
+        email: email,
+        password: ""
+      },
+    });
+    /* NOTE 2 */
+    const handleEmailSubmit = async (data: z.infer<typeof formSchema>) => {
+      setEmail(data.email);
+      const precheckResult = await emailLoginCheck({ email: data.email, password: data.password });
+
+      if (precheckResult.error) {
+        form.setError("root", {
+          message: precheckResult.message,
+        });
+        setEmailAuthError(precheckResult.message ?? "")
+        return;
+      }
+
+      /* NOTE 3 */
+      if (precheckResult.isActive) {
+        setStep(2);
+      }
+      else {
+        const response = await fullLoginUser({
+          email: data.email,
+          password: data.password
+        });
+
+        if (response?.error) {
+          form.setError("root", {
+            message: response?.message,
+          });
+        }
+        else {
+          router.push('/my-account');
+        }
+      }
+    };
+
+    return (
+      <main className="flex justify-center items-center min-h-screen">
+        { step === 1 &&
+          <Card className="w-[350]">
+            <CardHeader>
+              <CardTitle>Login</CardTitle>
+              <CardDescription>Login to your account.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form { ...form }>
+                { "NOTE 4" }
+                <form onSubmit={ form.handleSubmit(handleEmailSubmit) }>
+                  <fieldset disabled={ form.formState.isSubmitting } className="flex flex-col gap-2">
+                    <FormField
+                      control={ form.control }
+                      name="email"
+                      render={ ({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl>
+                            <Input { ...field } type="email" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      ) }
+                    />
+                    <FormField
+                      control={ form.control }
+                      name="password"
+                      render={ ({ field }) => (
+                        <FormItem>
+                          <FormLabel>Password</FormLabel>
+                          <FormControl>
+                            <Input { ...field } type="password" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      ) }
+                    />
+                    { !!emailAuthError &&
+                      <FormMessage>
+                        { emailAuthError }
+                      </FormMessage>
+                    }
+                    <Button type="submit">Login</Button>
+                  </fieldset>
+                </form>
+              </Form>
+            </CardContent>
+            <CardFooter className="flex-col gap-2">
+              <div className="text-muted-foreground text-sm">
+                Don&apos;t have an account?{ "   " }
+                <Link href="/register" className="underline">
+                  Register
+                </Link>
+              </div>
+              <div className="text-muted-foreground text-sm">
+                Forgot password?{ "   " }
+                { "NOTE 5" }
+                <Link className="underline"
+                  href={ `/password-reset${ form.getValues("email") ? `?email=${ encodeURIComponent(form.getValues("email")) }` : "" }` }>
+                  Reset my password
+                </Link>
+              </div>
+            </CardFooter>
+          </Card>
+        }
+        { " NOTE 6" }
+        { step === 2}
+      </main>
+    )
+  }
+```
+**Notes**: 
+
+  - **Note 1**: *State is needed to manage the login process, specifically the `step` variable that is used to advanced from the email/password login (step 1) to an optional step 2 which prompts for a one-time passcode if they enabled 2FA.*
+
+  - **Note 2**: *The step 1 form submission runs the `emailLoginCheck` server-side actions function to validate the email/password credentials. If valid then the step is set to 2, which only runs if they enabled 2FA.*
+
+  - **Note 3**: *The `precheckResult.isActive` indicates whether 2FA is enabled or not.*
+
+  - **Note 4**: *This is the first of two form submissions, the 2nd submit is for 2FA and optional.*
+
+  - **Note 5**: *This bit of script will pass the email address on in the event they entered it but now want click on the link to reset their password. I was not successful getting this to work on a `<Link>`. It works on a `router.push(...)` however.*
+
+  - **Note 6**: *Step 2 (which is truncated here) is the optional step to prompt for a One-Time Passcode (OTP) to finalize the login.* 
+
+## Login Server Action
+The server actions file will validate the input provided in the credentials conforms to the schema. The validation that the user is in fact registered in the users table and that the password matches is a validation performed via the `signIn` function exposed in the `@/auth.ts` file.
+
+**source file**: *`@/app/(logged-out)/login/login-form/actions.ts`*
+
+```tsx
+  'use server';
+
+  /* NOTE 1 */
+  export const fullLoginUser = async({email, password, token}
+  : {email: string, password: string, token?: string}) => {
+      const userSchema = z.object({
+        email: z.email(),
+        password: passwordSchema
+      });
+      /* NOTE 2 */
+      const userValidation = userSchema.safeParse({email, password});
+      if (!userValidation.success) {
+        return {
+          error: true,
+          message: userValidation.error.issues[0]?.message ?? "An error occurred in validation",
+        };
+          
+        }
+        /* NOTE 3 */
+        try {
+          const signInResult = await signIn("credentials", {
+            email,
+            password,
+            token, 
+            redirect: false
+          })
+        } catch(e) {
+          return {
+            error: true,
+            message: "Incorrect email or password"
+          }
+      };    
+    };
+  ```
+
+**Notes**:
+
+- **Note 1**: *Zod validation for email schema is defined by its type and the password authentication is specified in the `@/validation/passwordSchema.ts` file. **Ignore the token argument here** as this is used when the 2FA OTP is passed in.*
+- **Note 2**: *The `safeParse` method returns a boolean that indicates whether there was a content error in the credentials. (The `parse` method throws an error so it's not used here.)* 
+- **Note 3**: *The `signIn` method is exposed in the Credentials provider configured in the auth.ts. The credentials validation here is focused on the email/password but later the OTP `token` is passed.*
+
+# Step 3: Add Auth.js to Project
 Before going through the installation steps, let's clarify some of the naming in use with Auth.js.
 
 ## Next Auth vs. Auth.js
@@ -248,30 +309,37 @@ For more info about the Getting Started page for Auth.js, [visit this page](http
 
    **Note**: The CLI above updates the `.env.local` file.
 
-# Step 3: Seed Initial Auth.js Files
+# Step 4: Seed Initial Auth.js Files
+It's a good idea to get acquainted with the [Auth.js documentation for credentials authentication](https://authjs.dev/getting-started/authentication/credentials). 
 
-1. Add an `@/auth.ts` file with the following boilerplate content.
+1. Add an `@/auth.ts` file with the following boilerplate content. 
+
+    **Note** *Trust me, a lot more will be added to this file in steps below.*
 
     ```tsx
-    import NextAuth from "next-auth"
-    
-    export const { handlers, signIn, signOut, auth } = NextAuth({
-      providers: [],
+      import NextAuth from "next-auth"
+      
+      export const { handlers, signIn, signOut, auth } = NextAuth({
+        providers: [],
     })
     ```
-2. Create `route.ts` file in the following new directory: `/app/api/auth/[...nextauth]` with the following content.
+2. Create `route.ts` file in the following new directory: `/app/api/auth/[...nextauth]` with content below.
 
     ```tsx
-    import { handlers } from "@/auth" 
-    export const { GET, POST } = handlers
+      import { handlers } from "@/auth" 
+      export const { GET, POST } = handlers
     ```
-3. Create `@/proxy.ts` file with the following content (don't use the recommeded `middleware` naming  in the Getting Started setup).
+
+    **Note**: *The `handlers` are Auth.js functions that process authentication-related HTTP requests, like GET and POST, defined here for Next.js app routing.*
+
+3. Create `@/proxy.ts` file with the following content.
 
     ```tsx
     export { auth as proxy } from "@/auth"
     ```
+  **Note**: *The documentation still references the `middleware` proxy but this is deprecated. Instead, use `proxy`.*
 
-# Step 4: Configure Credentials Provider
+# Step 5: Configure Credentials Provider
 
 The `Credentials` provider will be implement in this project (not Oauth). Fortunately Auth.js supports both credentials and OAuth schemes, so the library can be used for both. As shown below, the mouseover does strongly recommend against password authentication, favoring OAuth. 
 
@@ -285,168 +353,94 @@ OAuth providers spend significant amounts of money, time, and engineering effort
 - **data security**: (encryption/salting, strength validation)
 ---
 
-## Configure auth.ts Provider
-To better explain the various parts of the Credentials configuration, the code below consists of various snippets that are appended to the code in the `auth.ts` file.
+## Configure Credentials Provider
+The fully implemented NextAuth `auth.ts` file is shown below. Important Notes follow the code block to describe various features of it.
 
-1. Add two imports to the `@/auth.ts` file.
+**source file** *`@/auth.ts`*
 
-    ```tsx
-    import NextAuth from "next-auth";
-    import Credentials from 'next-auth/providers/credentials';
-    import { nextAuthUserByEmail } from "./db/queries-users";
-    import { hashPasswordWithSalt } from "./lib/hash";
-    ```
-    **Note:** The last two imports are custom functions created to simplify the code in the Credentials provider configuration. Consult the following bookmark for more information on what they do.
+```tsx
+  import NextAuth from "next-auth";
+  import Credentials from 'next-auth/providers/credentials';
+  import { authValidation } from "./lib/auth-utils";
 
-2. **Append** the following `NextAuth` constructor that exposes four functions and defines an array of providers to be implemented in Auth.js. 
-
-    ```tsx
-    export const { handlers, signIn, signOut, auth } = NextAuth({
-      providers: [],
-      });
-      ```
-      **Note**: The `auth` function provides a way for the Next.js app to interact with NextAuth. Another function, 'signOut' allows a user to terminate their login session. (In auth.ts, simply mouseover the functions to get more documentation on what they do.)
-
-3. **Append** the following Credentials configuration, **inside** the providers array. See the explanationatory notes after code block.
-
-    ```tsx
-      providers: [
-        Credentials({
-          /* See Note 1 */
-          credentials: {
-            email: {},
-            password: {},
-          },
-          async authorize(credentials) {
-            /* See Note 2 */
-            const user = await nextAuthUserByEmail(credentials.email as string);
-
-            if (!user) {
-              throw new Error("user is null: Incorrect credentials");
-            }
-            else {
-              /* See Note 3 */
-              const hashedInputPassword = hashPasswordWithSalt(credentials.password as string, user.salt);
-              const passwordCorrect = user.password === hashedInputPassword? true : false;
-              if (!passwordCorrect) {
-                throw new Error("Invalid credentials");
-              }          
-            }
-            /* See Note 4 */
-            return {
-              id: user.id.toString(),
-              email: user.email 
-            }
-          }
-        })
-      ]
-    ```
-      **Note 1**: Define requisite credentials schema. The empty object properties (e.g. `email: {}`), if NextAuth is to generate the form for the credentials. However, we're providing the form and Zod validation to do this.
-
-      **Note 2**: Since a database is being used to persist user login data, a database select is perform inside the `authorize` method to retrieve the user credentials. Shown below is a snippet of the `nextAuthUserByEmail` function that does this.
-
-      ```tsx
-      export async function nextAuthUserByEmail(email: string)
-        : Promise<{id: number, email: string, password: string, salt: string}> {
-        const [user] = await db
-          .select({
-            id: users.id,
-            email: users.email,
-            password: users.password,
-          })
-          .from(users)
-          .where(eq(users.email, email)); 
-          
-          if (user) {
-            /* See Note 2A */
-            const passwordParts = user.password.split(':');
-        
-            /* See Note 2B */
-            const returnedUser = {
-              id: user.id,
-              email: user.email,
-              password: passwordParts[0],
-              salt: passwordParts[1]
-          }
-          return returnedUser;
+  /* NOTE 1 */
+  type AuthRecord = {
+    email: string;
+    password: string;
+    token?: string;
+  }
+  /* NOTE 2 */
+  export const { handlers, signIn, signOut, auth } = NextAuth({
+    callbacks: {
+      jwt({token, user}) {
+        if (user) {
+          token.id = user.id;
         }
-        /* The user object below is null but the provider logic in auth.ts will check for it */
-        return user;
+        return token;
+      },
+      session({session, token}) {
+          session.user.id = token.id as string;
+          return session;
       }
-      ```
-      **Note 2A**: When the user password is stored in the users table, the password is stored with two parts: the **hashed password** and separate by a colon ("`:`"), the **salt string** used to hash the user password. The salt string is a randomly generated 16 byte string for each user.
+    }, //end callbacks
+    /* NOTE 3 */
+    providers: [
+      Credentials({
+        credentials: {
+          email: {},
+          password: {},
+          token: {},
+        },
+        /* NOTE 4 */
+        async authorize(credentials) {
+          const userEmail = credentials.email;
+          const userPassword = credentials.password;
+          const token = credentials.token;
 
-      **Note 2B**: The `returnedUser` must contain the password and salt string so compare the incoming password can be hashed using the same salt before comparing the password credentials.
+          const authRecord:AuthRecord = {
+            email: userEmail as string,
+            password: userPassword as string,
+            token: token as string,
+          };
+          /* NOTE 5 */
+          const validationResult = await authValidation(authRecord);
 
-    **Note 3**: The hashing functions use the bcrypt library to do this. 
-    - Both functions are shown below, where the first function was used when a user is initially registered. There you can see the two parts being appended to form the password that is then stored. 
-    - The second function is used inside the auth.ts `authorize` method to hash the incoming password for validation purposes.
-
-    ```tsx
-    import crypto from 'node:crypto';
-
-    export function hashUserPassword(password:string) {
-      const salt = crypto.randomBytes(16).toString('hex');
-      const hashedPassword = crypto.scryptSync(password, salt, 64);
-      return hashedPassword.toString('hex') + ':' + salt;
-    }
-
-    export function hashPasswordWithSalt(password:string, salt: string) {
-      const hashedPassword = crypto.scryptSync(password, salt, 64);
-      return hashedPassword.toString('hex');
-    }
-    ```
-    **Note 4**: The user object returned by the Credentials provider contains an `id` and `email` properties. **The id property (as a string) is important to create a JWT token for the authorization session**.
-
-## Configure auth.ts Callbacks
-More must be added to the NextAuth constructor however, to ensure the `id` property is properly initialized in the JWT token and sessions during `auth`, `signIn`, `signOut` callbacks.
-
-1. Immediately above the `provider` array, add the following `callbacks` object with `jwt` and `session` configurations.
-
-```tsx
-  callbacks: {
-    jwt({token, user}) {
-      if (user) {
-        token.id = user.id;
-      }
-      return token;
-    },
-    session({session, token}) {
-        session.user.id = token.id as string;
-        return session;
-    }
-  }, //end callbacks
+          if (validationResult.error) {
+            return null;
+          }
+          return  validationResult;      
+        }
+      })
+    ],
+  });
 ```
+**Notes**:
 
-2. Save the changes to the `auth.ts` file.
+  - **Note 1**: *The input arguments support both email/password credentials as well as 2FA. Presently this guide is not addressing 2FA. (See guides 7-8 for info on the 2FA login.*
 
-# Step 5: Create Route Groups and Layouts
-Route groups provide the ability for pages to share layouts and are readily identified because the folder names within the `app` directory are enclosed in parentheses (e.g. `(logged-in)`, `(logged-out)`). As shown below there are two such route groups (presently).
+  - **Note 2**: *The `NextAuth` constructor has two configurations: the first for the callbacks and the second for the Credentials authorize.*
+    - The JWT callback needs the authorization `id` (as a string) in order to generate a `jwt` token for the validated session, which consists of the `user.id`.
+    - The `session` object created must also include the `user.id` as well, so it is added to the session object.
 
-![](./docs/login-route-groups.png)
+  - **Note 3**: *The providers configuration is an array. In this implementation is focused on the `Credentials` provider but one or more OAuth providers could be (usually are) configured as well.*
 
-The layout files provide a means to enforce login session rules. For example, all of the page.tsx files within the `(logged-in)` group require an authorization session. The snippet below resides in the `@/app/(logged-in)/layout-tsx` file. If there is no session, then redirect the user to the login page.
+  - **Note 4**: *The `authorize` function is executed when the `signIn` callback method is called by our login actions component.*
 
-```tsx
-...
-export default async function LoggedInLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    redirect("/login");
-  }...}
-  return (...)
-```
-# Step 6: Create Logout Server Function
-Testing Auth.js at this point is not really feasible until several more things are implemented, like a logout function implemented for the `(logged-in)` pages. The invocation of the `logOut` function in auth.ts is defined in the `@/app/(logged-in)/auth-components` files. 
+  - **Note 5**: *The `authValidation` function is a common routine performed.* 
 
-Since a logout button is a client function, the `index.ts` file provides this to run a server function to do the session logout in `actions.ts`. Both are shown below. 
+# Step 6: Implement Logout Functionality
+When a user has logged in, a button to logout must be provided. This is implemented in the `layout.tsx` defined for the `@app/(logged-in)` pages, as shown below.
+
+![](./logout-button-in-layout.png)
+
+**Note**: *The invocation of the `logOut` function in auth.ts is defined in the `@/app/(logged-in)/auth-components` files.*
+
+## Create Logout Client Component
+The client button to implement the logout is shown below. 
    
-   **index.ts**
-   ```tsx
+  **source file**: *`@/app/(logged-in)/auth-components/index.tsx`* 
+
+  ```tsx
     'use client';
 
     import { Button } from "../../../components/ui/button";
@@ -464,58 +458,22 @@ Since a logout button is a client function, the `index.ts` file provides this to
       )
     }   
   ```
+## The Logout Server Action
+  When the button `onClick` event fires, the `logout` function exported from `actions.ts` will run. In turn, it executes the `signOut` function configured in `auth.ts`. Say bye-bye authentication session!
 
-  When the button `onClick` event fires, the `logout` function exported from `actions.ts` will run.
+  **source file**: *`@/app/(logged-in)/auth-components/actions.ts`* 
 
-  **actions.ts**
   ```tsx
-  'use server';
+    'use server';
 
-  import { signOut } from "@/auth";
+    import { signOut } from "@/auth";
 
-  export const logout = async() => {
-    await signOut();
-  }  
+    export const logout = async() => {
+      await signOut();
+    }  
   ```
-# Step 7: Login Form Session signIn 
-At the end of the `@/app/(logged-out)/login/actions.ts` file (as shown in [Step 1: Server Action](#server-action)) is code that needs to be uncommented (i.e. activated). The credentials validated in the `actions.ts` will now make a call to the `signIn` function exposed in the `auth.ts` file.     
 
-# Step 8: Implement Temporary Session Logic
-Enough has been done to this point such that we should test what we have thus far. However, we'll need some temporary code to help us troubleshoot. 
-
-1. Open the root layout file (`@/app/layout.tsx`).
-2. Add the following two imports.
-
-    ```tsx
-    import { auth } from "@/auth";
-    import LogoutButton from "./(logged-in)/auth-components";
-    ```
-3. Just before the return, add the following variable creation.
-   
-   ```tsx
-    const session = await auth();
-   ```
-4. Scroll down and rearrange the `{children}` prop display such that it is preceded by a conditional session display, as shown below.
-
-    ```tsx
-        ...
-        <body className={ `${ geistSans.variable } ${ geistMono.variable } antialiased` }>
-          <>
-            <div>{ session?.user?.email ?
-              <div><LogoutButton /> { session?.user?.email }</div>
-              : "There is no session for the user" }</div>
-            { children }
-          </>
-        </body>
-        ...
-    ```
-4. Save and start the application: `npm run dev`
-
-5. In the browser open URL: `http://localhost:3000/login`
-
-6. Be patient debugging as there are a lot of moving parts.
-
-# Step 9: Implement Page Protection
+# Step 7: Implement Page Protection
 Use the authorization session created via the Credential provider implemented in auth.ts, add checks in the layout files to redirect the flow depending on the session state. 
 
 Shown below is such a check in the `(logged-in)/layout.tsx` file.
@@ -534,7 +492,7 @@ export default async function LoggedInLayout({
   return (...)}
 ```
 
-The reverse logic is ustilized in the `(logged-out)/layout.tsx` file. If there is a session then redirect to the `(logged-in)/login/my-account` page.
+The reverse logic is utilized in the `(logged-out)/layout.tsx` file. If there is a session then redirect to the `(logged-in)/login/my-account` page.
 
 ```tsx
 ...
@@ -548,39 +506,4 @@ export default async function LoggedOutLayout({
     redirect("/my-account");
   }
   return (...)}
-```
-# Step 10: Backout Temporary Test Session Logic
-After testing various login and logout scenarios and you're confident in the results, return to the `root layout.tsx` file and remove the temporary logic that renders a logout button and email display.
-
-# Step 11: Embellish the my-account Page
-In this step we'll add a little embellishment the my-account page, before moving on to the [change password form implementation](./Change-Password-Form.md). 
-
-![](./docs/embellish-my-account.png)
-
-Replace the page.tsx contents with the following.
-
-```tsx
-import { auth } from "@/auth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-
-export default async function MyAccount() {
-  const session = await auth();
-
-  return (
-    <Card className="w-[400] ">
-      <CardHeader>
-        <CardTitle className="text-center font-bold size-1.2">My Account</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Label>
-          Email Address
-        </Label>
-        <div className="text-muted-foreground">
-          { session?.user?.email }
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
 ```

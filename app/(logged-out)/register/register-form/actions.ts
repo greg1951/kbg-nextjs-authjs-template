@@ -33,13 +33,19 @@ export const registerUser = async({
       }
     }
 
-    const result = await insertRegisteredUser(email, password);
+    const insertResult = await insertRegisteredUser(email, password);
+    if (!insertResult) {
+      return {
+        error: true,
+        message: "Registered user insert failed"
+      }
+    }
     
     } catch (e: unknown) {
       if (e instanceof Error && e.code === "23505") {
         return {
           error: true,
-          message: "An accound is already registered with that emaill"
+          message: "An accound is already registered with that email"
         };
       }
       return {

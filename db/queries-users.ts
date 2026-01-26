@@ -27,15 +27,6 @@ type UserPasswordReturnType = {
   message?: string
 }
 
-
-type AuthValidationReturnType = {
-  id: number; 
-  email: string; 
-  password: string; 
-  salt: string
-}
-
-
 export async function isUserRegistered(email: string) {
   const result = await db
     .select({count: count()})
@@ -85,32 +76,47 @@ export async function updateUserPassword(email: string, password: string) : Prom
 
 }
 
+
+export type GetFullUserCredsReturnType = {
+  id: number; 
+  email: string; 
+  password: string; 
+  salt: string;
+  isActivated: boolean;
+  secret: string;
+}
+
 /* This function is used by the Auth.js Credentials provider */
-export async function nextAuthUserByEmail(email: string)
-  : Promise<AuthValidationReturnType> {
+export async function getFullUserCredsByEmail(email: string)
+  : Promise<GetFullUserCredsReturnType> {
   const [user] = await db
     .select({
       id: users.id,
       email: users.email,
       password: users.password,
+      isActivated: users.twoFactorActivated,
+      secret: users.twoFactorSecret,
     })
     .from(users)
     .where(eq(users.email, email)); 
+    
     /* 
-      The stored password contains to fields, separated by colon:
-        1. actual hashed password
-        2. salt used to hash password
-     */
+      The stored password contains two elements that are separated by colon.
+        1. The user's actual password but hashed
+        2. The "salt" used to hash the password; used to hash the clear-text password for comparison to hashed password
+    */
     
     if (user) {
       const passwordParts = user.password.split(':');
-      // console.log('nextAuthUserByEmail->passwordParts: ', passwordParts);
+      // console.log('authenticateUserByEmail->passwordParts: ', passwordParts);
   
       const returnedUser = {
         id: user.id,
         email: user.email as string,
         password: passwordParts[0],
-        salt: passwordParts[1]
+        salt: passwordParts[1],
+        isActivated: user.isActivated as boolean,
+        secret: user.secret as string,
     }
     return returnedUser;
   }
@@ -144,7 +150,7 @@ export async function getUserByEmail(email: string)
         password: passwordParts[0],
         salt: passwordParts[1],
       }
-      console.log('fullUserInfo: ', fullUserInfo);
+      // console.log('getUserByEmail->fullUserInfo: ', fullUserInfo);
       return fullUserInfo;
     }
     else {
@@ -154,6 +160,85 @@ export async function getUserByEmail(email: string)
       }
     }
 }
+
+type GetUser2faReturnType = {
+  success: boolean; 
+  message?: string;
+  id?: number; 
+  secret?: string; 
+  isActivated?: boolean; 
+}
+
+export async function getUser2fa(email: string) 
+  : Promise<GetUser2faReturnType>  {
+  const [user] = await db
+    .select({
+      id: users.id,
+      secret: users.twoFactorSecret,
+      isActivated: users.twoFactorActivated
+    })
+    .from(users)
+    .where(eq(users.email, email)); 
+
+  if (!user) 
+    return {
+      success: false,
+      message: "There were no users found matching that email."
+    };
+  return {
+    success: true, 
+    id: user.id as number,
+    secret: user.secret as string,
+    isActivated: user.isActivated as boolean,
+  }
+};
+
+export type Update2faSecretRecordType = {
+  email: string; 
+  secret: string;
+}
+
+export async function updateUser2faSecret(args: Update2faSecretRecordType) 
+  : Promise<ErrorReturnType>  {
+  const updateResult = await db
+    .update(users)
+    .set({twoFactorSecret: args.secret})
+    .where(eq(users.email, args.email)); 
+
+  if (!updateResult) 
+    return {
+      error: false,
+      message: "Unable to update 2fa string."
+    };
+
+  return {
+    error: false, 
+  }
+};
+
+export type Update2faActivatedRecordType = {
+  email: string; 
+  isActivated: boolean;
+}
+
+export async function updateUser2faActivated(args: Update2faActivatedRecordType) 
+  : Promise<ErrorReturnType>  {
+
+  const updateResult = await db
+    .update(users)
+    .set({twoFactorActivated: args.isActivated})
+    .where(eq(users.email, args.email)); 
+
+  if (!updateResult) 
+    return {
+      error: false,
+      message: "Unable to update 2fa boolean."
+    };
+
+  return {
+    error: false, 
+  }
+};
 
 type EmailByIdReturnType = {
   success: boolean; 

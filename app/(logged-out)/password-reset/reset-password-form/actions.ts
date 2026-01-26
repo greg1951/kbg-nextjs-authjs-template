@@ -19,7 +19,7 @@ export const passwordReset = async (email: string) => {
   if (!userInfo.success) {
     return;
   }
-  console.log('passwordReset->userInfo.id: ', userInfo.id);
+  // console.log('passwordReset->userInfo.id: ', userInfo.id);
 
   /* Generate password reset token that will need to be stored in a database table */
   const passwordResetToken = randomBytes(32).toString('hex');
@@ -30,8 +30,7 @@ export const passwordReset = async (email: string) => {
     tokenExpiry: tokenExpiry
   }
   // console.log('passwordReset->insertRecord: ', insertRecord);
-  const result = await insertPasswordToken(insertRecord);
-  // console.log('insert result: ', result);
+  const insertResult = await insertPasswordToken(insertRecord);
 
   const resetLink=`${process.env.SITE_BASE_URL}/update-password?token=${insertRecord.token}`; 
   const sendResult = await mailer.sendMail({
@@ -41,9 +40,16 @@ export const passwordReset = async (email: string) => {
     text: `You requested to reset your password. This link will expire in an hour. Click on the link below to reset it on our website:\n\n ${resetLink}`,
   });
 
-  console.log('passwordReset->sendResult: ',sendResult)
+  // console.log('passwordReset->sendResult: ',sendResult)
+  if (!sendResult.accepted) {
+    return {
+      error: true,
+      message: "Reset Password email did not send"
+    }
+  }
 
-
-  return result;
+  return {
+    error: false,
+  }
   
 }
