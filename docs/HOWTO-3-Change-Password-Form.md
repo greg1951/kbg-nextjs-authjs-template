@@ -50,7 +50,7 @@ The pages and form to change the user password are described here, in a **step-b
 
 1. Create the `index.tsx` file below, to which we'll later copy in a form and modify.
 
-    **source file**: *`@/app/(logged-in)/change-password/change-password-form/index.tsx`*
+    **source file**: *`@/app/(auth)/(logged-in)/change-password/change-password-form/index.tsx`*
 
     ```tsx
       'use client';
@@ -61,7 +61,7 @@ The pages and form to change the user password are described here, in a **step-b
     ```
 2. Create a new page with the following boilerplate code which includes the above client component.
 
-    **source file**: *`@/app/(logged-in)/change-password/page.tsx`*
+    **source file**: *`@/app/(auth)/(logged-in)/change-password/page.tsx`*
 
     ```tsx
       import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -89,7 +89,7 @@ Copy the Register form file contents into the change password form file and make
 
 1. The copy source/target files below were done to populate the new `index.tsx` file for the password change.
 
-    **source file**: *`@/app/(logged-out)/register/page.tsx`* <<< copy only the entire `<Form>` element only
+    **source file**: *`@/app/(auth)/(logged-out)/register/page.tsx`* <<< copy only the entire `<Form>` element only
     **target file**: *`@/app/(logged-in)/change-password/change-password-form/index.tsx`*
 
 2. The copied contents were modified for a password change. Shown below is a snippet of the move interesting parts of the `<ChangePasswordForm>` component.

@@ -1,4 +1,4 @@
-import LogoutButton from "@/app/(logged-in)/auth-components"
+import LogoutButton from "@/app/(auth)/(logged-in)/auth-components"
 import { getSessionEmail } from "@/features/auth/services/auth-utils";
 import Link from "next/link"
 import { redirect } from "next/navigation";

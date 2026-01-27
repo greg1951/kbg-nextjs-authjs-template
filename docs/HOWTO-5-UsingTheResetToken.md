@@ -8,7 +8,7 @@
 # Overview
 The functionality provides a page and form as a way to receive the password token via a request URL parameter and then to confirm the token. Here it assumes the request URL is in the email sent to the user and the user followed it to this page for the reset using the token.
 
-**Note**: *It does not include the logic to send the email. The app pages are located in the `@/app/(logged-out)/update-password` directories.*
+**Note**: *It does not include the logic to send the email. The app pages are located in the `@/app/(auth)/(logged-out)/update-password` directories.*
 
 The development steps here will follow these steps. 
 
@@ -25,59 +25,59 @@ The app page that receives a password reset token from the email will validate t
 
 **Note**: *The client page in its entirety is provided below, with notes after to describe key steps.*
 
-**source file**: *@/app/(logged-out)/update-password/page.tsx* 
+**source file**: *`@/app/(auth)/(logged-out)/update-password/page.tsx`* 
 
 ```tsx
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getPasswordToken } from "@/db/queries-passwordResetTokens";
-import Link from "next/link";
-import UpdateResetPasswordForm from "./update-password-form";
+  import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+  import { getPasswordToken } from "@/features/auth/components/db/queries-passwordResetTokens";
+  import Link from "next/link";
+  import UpdateResetPasswordForm from "./update-password-form";
 
-export default async function UpdateResetPassword({ searchParams }: {
-  /* Note 1 */
-  searchParams: Promise<{
-    token?: string;
-  }>
-}) {
-  const { token } = await searchParams;
-  let isValidExpiry;
-  let email;
-  if (token) {
-    /* Note 2 */
-    const result = await getPasswordToken({ token });
-    if (result.error) {
-      console.log('Error occurred retrieving passwordToken');
+  export default async function UpdateResetPassword({ searchParams }: {
+    /* Note 1 */
+    searchParams: Promise<{
+      token?: string;
+    }>
+  }) {
+    const { token } = await searchParams;
+    let isValidExpiry;
+    let email;
+    if (token) {
+      /* Note 2 */
+      const result = await getPasswordToken({ token });
+      if (result.error) {
+        console.log('Error occurred retrieving passwordToken');
+      }
+
+      isValidExpiry = result.isValidExpiry;
+      email = result.email;
     }
 
-    isValidExpiry = result.isValidExpiry;
-    email = result.email;
-  }
-
-  /* Note 3 */
-  return (
-    <main className="flex justify-center items-center min-h-screen">
-      <Card className="w-[350]">
-        <CardHeader>
-          <CardTitle>Password Reset Update</CardTitle>
-          <CardDescription>
+    /* Note 3 */
+    return (
+      <main className="flex justify-center items-center min-h-screen">
+        <Card className="w-[350]">
+          <CardHeader>
+            <CardTitle>Password Reset Update</CardTitle>
+            <CardDescription>
+              { isValidExpiry
+                ? `${ email }`
+                : "Your password reset link is invalid or has expired"
+              }
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
             { isValidExpiry
-              ? `${ email }`
-              : "Your password reset link is invalid or has expired"
+              ? <UpdateResetPasswordForm userEmail={ email as string } />
+              : <Link href='/password-reset' className="underline">
+                Request another password Reset
+              </Link>
             }
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          { isValidExpiry
-            ? <UpdateResetPasswordForm userEmail={ email as string } />
-            : <Link href='/password-reset' className="underline">
-              Request another password Reset
-            </Link>
-          }
-        </CardContent>
-      </Card>
-    </main>
-  )
-}
+          </CardContent>
+        </Card>
+      </main>
+    )
+  }
 ```
 **Notes**:
 
@@ -88,24 +88,12 @@ export default async function UpdateResetPassword({ searchParams }: {
 # Step 2: Retrieve Token and Validate Expiry
 The `getPasswordToken` function accesses the `passwordResetTokens` table to retrieve the password token expiry and return a boolean that it is valid or not. 
 
-  **Note**: *Notice in the code below the use of types as a means to provide good type safety (and documentation).*
+  **Note**: *Notice in the snippet below the use of types as a means to provide good type safety (and documentation). The types are all consolidated in the `@/features/auth/types` directory.*
 
-  **source file** *@/db/queries-passwordResetTokens.ts*
+  **source file** *`@/features/auth/components/db/queries-passwordResetTokens.ts`*
 
   ```tsx
     /* Note 1 */
-    export type PasswordTokenRecordType = {
-      token: string;
-    }
-
-    type GetPasswordTokenReturnType = {
-      error: boolean,
-      message?: string,
-      email?: string,
-      tokenExpiry?: Date,
-      isValidExpiry?: boolean
-    }
-
     export async function getPasswordToken(arg: PasswordTokenRecordType)
     : Promise<GetPasswordTokenReturnType> {
         /* Note 2 */

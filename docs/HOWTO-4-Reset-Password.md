@@ -12,7 +12,7 @@
 # Overview
 This How-to guide documents how to create a form to send a password reset URL to the user and provide the form to reset it. (See the [markdown index](../README-HowToGuides.md) for a list of the How-To documents and their purpose.)
 
-This functionality will be implemented inside the `@/app/(logged-out)/password-reset` route.
+This functionality will be implemented inside the `@/app/(auth)/(logged-out)/password-reset` route.
 
 ![](./docs/reset-password-form.png)
 
@@ -28,7 +28,7 @@ The steps to be followed to implement the above form, send email and create the 
 
 
 # Step 1: Create App Route Directories
-From the app directory you can see the folders and files that were created under `@/app/(logged-out)/password-reset` to encapsulate the reset password functionality. It assumes the user is logged out and wants to have it reset.
+From the app directory you can see the folders and files that were created under `@/app/(auth)/(logged-out)/password-reset` to encapsulate the reset password functionality. It assumes the user is logged out and wants to have it reset.
 
 ![](./reset-password-folders.png)
    
@@ -37,7 +37,7 @@ If the user is on the login page and tried to login but failed, they but they ca
 
 In the login page, update the reset password `<Link>` to set the following fairly tricky `href`.
 
-  **source file**: *@/app/(logged-out)/login/page.tsx*
+  **source file**: *`@/app/(auth)/(logged-out)/login/page.tsx`*
 
   ```tsx
     ...
@@ -89,7 +89,7 @@ As shown in the *snippet* below (refer to the full file if necessary), when rend
 
 **Note**: *The reset password form could have been included in the page.tsx file. As a best practice however, the form is relegated to a separate file, using the name `index.tsx`.*
 
-  **source file**: *@/app/(logged-out)/password-reset/page.tsx*
+  **source file**: *`@/app/(auth)/(logged-out)/password-reset/page.tsx`*
 
   ```tsx
     import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -114,7 +114,7 @@ As shown in the *snippet* below (refer to the full file if necessary), when rend
 ## The ResetPasswordForm Component
 The `index.tsx` file implements a client form component, the associated (Zod) validation and the form submission, implemented in the `actions.ts` file.
 
-  **source file**: *@/app/(logged-out)/password-reset/page.tsx*
+  **source file**: *`@/app/(auth)/(logged-out)/password-reset/page.tsx`*
 
   ```tsx
     'use client';
@@ -197,7 +197,7 @@ The new `passwordResetTokens` table will now be defined and pushed to the Neon P
 
 1. Create the `schema-passwordResetTokens.ts` file with the following code to create the `passwordResetTokens` table.
 
-    **source file**: *@/db/schema-passwordResetTokens.ts*
+    **source file**: *`@/features/auth/components/db/schema-passwordResetTokens.ts`*
 
     ```tsx
       import { serial, pgTable, text, timestamp, integer } from "drizzle-orm/pg-core";
@@ -213,13 +213,13 @@ The new `passwordResetTokens` table will now be defined and pushed to the Neon P
       });
     ```
 
-2. Update the `@/db/schema.ts` file to export the `passwordResetTokens` table. This file defines the two tables currently in use. 
+2. Update the `@/features/auth/components/db/schema.ts` file to export the `passwordResetTokens` table. This file defines the two tables currently in use by the authentication feature. 
 
     ```tsx
       ...
       export { passwordResetTokens } from './schema-passwordResetTokens';
     ```
-    **Note**: *The above `schema.ts` file is referenced in the `@/drizzle.config.ts` file which is used by the `npx push` command*.
+    **Note**: *The above `schema.ts` file is referenced in the `@/drizzle.config.ts` file which is used by the `npx push` command to update the schema on the Neon platform*.
 
 3. Run in terminal window: `npx drizzle-kit push`
 
@@ -304,14 +304,15 @@ Shown below is the `insertPasswordToken` function that performs the insert.
 # Step 6: Create Reset Password Server Actions Component
 You may have noticed the `handleSubmit` function shown before in the `index.tsx` is empty but it will be updated to call the `passwordReset` function shown below.
 
-**source file**: *`@/app/(logged-out)/password-reset/reset-password-form/actions.ts`*
+**source file**: *`@/app/(auth)/(logged-out)/password-reset/reset-password-form/actions.ts`*
 
 ```tsx
   'use server';
   import { auth } from "@/auth";
-  import { getUserByEmail } from "@/db/queries-users";
+  import { getUserByEmail } from "@/features/auth/components/db/queries-users";
   import { randomBytes } from "crypto";
-  import { InsertRecordType, insertPasswordToken } from "@/db/queries-passwordResetTokens";
+  import { insertPasswordToken } from "@/features/auth/components/db/queries-passwordResetTokens";
+  import { InsertRecordType } from "@/features/auth/types/passwordResetTokens";
 
   export const passwordReset = async (email: string) => {
     /* Note 1 */
@@ -350,7 +351,7 @@ You may have noticed the `handleSubmit` function shown before in the `index.tsx`
 # Step 7: Implement the Server Action Component
 Before testing the full reset password request what is needed is logic to call the `passwordReset` function created in the prior step.
 
-  **source file**: *`@/app/(logged-out)/password-reset/password-reset-form/index.tsx`*
+  **source file**: *`@/app/(auth)/(logged-out)/password-reset/password-reset-form/index.tsx`*
 
   ```tsx
     const handleSubmit = async (data: z.infer<typeof formSchema>) => {

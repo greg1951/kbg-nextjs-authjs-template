@@ -17,7 +17,6 @@
    3. [Register Account Form](#register-account-form)
    4. [Server Action Form Data](#server-action-form-data)
 
-
 ---
 # Overview
 This How-To markdown file will document setting up a form to register account new users form and then add the new user to a `users` table that resides in a PostgreSql database on the Neon platform. (See the [markdown index](../README-HowToGuides.md) for a list of all the How-To documents.)
@@ -29,13 +28,17 @@ Here are the development steps this How-To guide will follow.
 4. Create Register Account form.
 
 # Step 1: Create Next.js Project
-Run the `npx` command to create the project: `npx create-next-app@latest`. You will be prompted to enter the app name. 
+1. Run the `npx` command to create the project: `npx create-next-app@latest`. You will be prompted:
+   1. To enter the app name. 
+   2. whether you want to use a source "src" directory. Create a "src" directory!
+   3. You will be prompted about Typescript and Tailwindcss: Both are strongly recommended.
 
-There are a number of 3rd party libraries used in the project created by the above prompt (Typescript and Tailwindcss). **Both are strongly recommended**. 
 - Good Tailwindcss resources:
   - Refer to the [Tailwind CSS](https://tailwindcss.com/) for installation and docs on the classes. 
   - Install the VS Code **Tailwind CSS Intellisense extension** which is amazing.
 - Get comfortable with **Typescript** as it really does help to tighten up the code you write.
+
+2. Run `npm install` and get some coffee.
 
 # Step 2: Install Components
 There's a long list of components. Be vigilant as changes are introduced that may not work the same depending on what's in the latest version. Consult the `@/package.json` for the versions in this GitHub branch.
@@ -96,7 +99,7 @@ psql 'postgresql://neondb_owner:**********@ep-red-brook-ad6z3qmu-pooler.c-2.us-e
 ```tsx
 NEON_DATABASE_URL="postgresql://neondb_owner:*************@ep-red-brook-ad6z3qmu-pooler.c-2.us-east-1.aws.neon.tech/next-credentials-db?sslmode=require&channel_binding=require"
 ```
-6. Create new folder and file (`@/db/drizzle.ts`) file to export the drizzle database connection to neon. 
+6. Reference this (`@/features/auth/components/db/drizzle.ts`) file which exports the drizzle database (`db`) connection to the Neon platform. 
 
 ```tsx
 import { neon } from '@neondatabase/serverless';
@@ -107,7 +110,7 @@ const db = drizzle(sql);
 
 export default db;
 ```
-7. Test the connection by adding this to the end of the registerUser function.
+7. Test the connection by adding this to the end of the `registerUser` function.
 
 ```tsx
   ...
@@ -133,7 +136,7 @@ export const usersTable = pgTable("users", {
 ```
 The drizzle push command is a useful feature when needing to test new schema creation without worrying about migration. 
 
-1. Create `@/drizzle-dev.drizzle.config.ts` file which defines the dialect and the location of the schema creation file.
+1. Create `@/drizzle.config.ts` file which defines the dialect and the location of the schema creation file.
    
 2. The example below is an example of a simple config. More elaboration is required for [production pushes](https://orm.drizzle.team/docs/kit-overview#prototyping-with-db-push).
 
@@ -148,11 +151,12 @@ dotenv.config({
 
 export default defineConfig({
   dialect: "postgresql",
-  schema: "./db/schema.ts",
+  schema: "./src/features/auth/components/db/schema.ts",
   dbCredentials: {
     url: process.env.NEON_DATABASE_URL!
   }
 });
+
 ```
 
 **Notes:**
@@ -162,6 +166,9 @@ export default defineConfig({
 - The `import * as dotenv from "dotenv"` allows the variables to be loaded from the `dotenv.config()` operation. There the path reference to **.env.local** is loaded into process.env when the app is started.
 
 - Call `dotenv.config()` as the first line in your entry file (before any other code that uses environment variables) to ensure they are loaded.
+
+- The `schema` location in `defineConfig` references the file in the auth feature folders. 
+  - *If other domains need to create database tables then perhaps this file should be moved up to the `@/components/db` directory.*
 
 ## Create Schema in Neon PostgreSql 
 1. After the `drizzle-config.ts` file is saved then run the following command to push the change to the remote Neon database server. **Note**: `push` is typically used for *prototyping* schema.
@@ -234,7 +241,7 @@ As the Next.js app router relies on how the application pages are structured, re
 ## Register Account Page
 The page that renders the account registration is built using the `shadcn` components installed earlier. The form however, is located in the `index.tsx` file, as mentioned in the oveview. 
 
-**source file**: *@/app/logged-out/register/page.tsx* 
+**source file**: *`@/app/(auth)/(logged-out)/register/page.tsx`* 
 
 ```tsx
   'use client';
@@ -278,7 +285,7 @@ The page that renders the account registration is built using the `shadcn` compo
 ## Register Account Form
 In the **code snippet** below only the more interesting aspects of the form are covered. Reference the notes after the code block.
 
-**source file**: *`@/app/logged-out/register/register-form/index.tsx`* <<< reference the full file for the entire form
+**source file**: *`@/app/(auth)/(logged-out)/register/register-form/index.tsx`* <<< reference the full file for the entire form
 
 ```tsx
   ...
@@ -326,14 +333,14 @@ In the **code snippet** below only the more interesting aspects of the form are 
 ## Server Action Form Data
 As the form and associated validations are operational, what remains now is to post the form as a part of a server action. 
 
-**source file**: *`@/app/logged-out/register/register-form/actions.tsx`*
+**source file**: *`@/app/(auth)/(logged-out)/register/register-form/actions.ts`*
 
 ```tsx
   'use server';
 
-  import { passwordMatchSchema } from "@/validation/passwordMatchSchema";
-  import z from "zod";
-  import { insertRegisteredUser, isUserRegistered } from "@/db/queries-users";
+import { passwordMatchSchema } from "@/features/auth/components/validation/passwordMatchSchema";
+import z from "zod";
+import { insertRegisteredUser, isUserRegistered } from "@/features/auth/components/db/queries-users";
 
   export const registerUser = async({
     email, 

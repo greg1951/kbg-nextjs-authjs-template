@@ -1,48 +1,48 @@
 1. [Overview](#overview)
-2. [Step 1: Create 2fa Enablement Form](#step-1-create-2fa-enablement-form)
+2. [Step 1: Create 2FA Enablement Form](#step-1-create-2fa-enablement-form)
 3. [Step 2: Create Function to Return User's 2FA Settings from the Database](#step-2-create-function-to-return-users-2fa-settings-from-the-database)
 4. [Step 3: Pass 2FA Fields to Enablement Form](#step-3-pass-2fa-fields-to-enablement-form)
-5. [Step 4: Create Server Action to Generate 2fa Secret](#step-4-create-server-action-to-generate-2fa-secret)
-6. [Step 5: Display the QR Code in 2fa Form](#step-5-display-the-qr-code-in-2fa-form)
+5. [Step 4: Create Server Action to Generate 2FA Secret](#step-4-create-server-action-to-generate-2fa-secret)
+6. [Step 5: Display the QR Code in 2FA Form](#step-5-display-the-qr-code-in-2fa-form)
 7. [Step 6: Add Input-OTP Form](#step-6-add-input-otp-form)
 8. [Step 7: Enable 2FA Submit Event](#step-7-enable-2fa-submit-event)
 9. [Step 8: Disable 2FA Submit Event](#step-8-disable-2fa-submit-event)
 
 ---
 # Overview
-The functionality in this markdown documents how to implement 2-Factor-Auth. It is the last of the How-To documentation in this project. (See the [markdown index](../README-HowToGuides.md) for a list of the How-To documents and their purpose.)
+The functionality in this markdown documents how to implement 2-Factor-Auth. It is the last of the How-To documentation in this project. (See the [markdown index](../README-HowToGuides.md) for a list of all the How-To documents.)
 
-Implementing 2fa requires three steps in the UI, predicated on 2fa not previously activated for the user.
-- The **first** UI step is to display a button in the 2fa form that they click on if they want to enable 2fa.
+Implementing 2FA authentication requires three steps in the UI, predicated on 2FA not previously activated for the user.
+- The **first** UI step is to display a button in the 2FA form that they click on if they want to enable 2FA.
 
-  ![](./2fa-enable-step.png)
+  ![](./2FA-enable-step.png)
 
 - The **second** UI step is to generate a secret and render a QR code to the user which they can scan into their authenticator app.
 
-  ![](./2fa-qr-code-step.png)
+  ![](./2FA-qr-code-step.png)
 
-- The **third** UI step is to prompt the user to enter a one-time code (from the authenticator app) that will then commit the user's 2fa settings into the `users` table.
+- The **third** UI step is to prompt the user to enter a one-time code (from the authenticator app) that will then commit the user's 2FA settings into the `users` table.
 
-  ![](./2fa-otp-submit-step.png)
+  ![](./2FA-otp-submit-step.png)
 
 The developments steps are summarized below. The code will be primarily implemented in the `@/app/(logged-in)/my-account` routes of the app. 
 
-1. Create 2fa enablement form.
-2. Create function to return user's 2fa fields from database.
-3. Pass 2fa fields to the enablement form.
+1. Create 2FA enablement form.
+2. Create function to return user's 2FA fields from database.
+3. Pass 2FA fields to the enablement form.
 4. Create server action to generate and update secret.
-5. Render the QR code in the 2fa form.
-6. Commit 2fa changes to the users table.
+5. Render the QR code in the 2FA form.
+6. Commit 2FA changes to the users table.
 7. Update the login to use the authenticator app code.
 
-# Step 1: Create 2fa Enablement Form
-If 2fa is not active for the user, then display a button on the `my-account` page to enable it. If the user clicks on the enable button then the second step is to generate a QR code for the authenticator app. 
+# Step 1: Create 2FA Enablement Form
+If 2FA is not active for the user, then display a button on the `my-account` page to enable it. If the user clicks on the enable button then the second step is to generate a QR code for the authenticator app. 
 
 The `index.tsx` file implements a form to perform all of the 2FA UI steps. 
 
 **Note**: The snippet below does not show all of the code. That will be filled in later steps.
 
-  **source**: *@app/(logged-in)/my-account/two-factor-auth-form/index.tsx*
+  **source**: *`@app/(auth)/(logged-in)/my-account/two-factor-auth-form/index.tsx`*
 
   ```tsx
     'use client';
@@ -103,7 +103,7 @@ The `index.tsx` file implements a form to perform all of the 2FA UI steps.
 
   - **Note 1**: The `my-account` page will pass several props to this form. The first is the `users.twoFactorActivated` boolean and the other is the email which the page component will pass in from a session that exists in the page.
 
-  - **Note 2**: State will be used to track what step in the 2fa enablement is in. The default status of the `active` state is set from the incoming `isActive` value. 
+  - **Note 2**: State will be used to track what step in the 2FA enablement is in. The default status of the `active` state is set from the incoming `isActive` value. 
 
   - **Note 3**: Presently the onClick function only increments the step state variable. 
     - Code will be shown in a later step to call a server action to generate the key URI used for the QR code to be rendered.
@@ -114,17 +114,10 @@ The `index.tsx` file implements a form to perform all of the 2FA UI steps.
 # Step 2: Create Function to Return User's 2FA Settings from the Database
 The `getUser2fa` function below will be used in the next step to return all of the user's 2FA settings.
 
-  **source file**: *@/db/queries-users.ts*
+  **source file**: *@/features/auth/components/db/queries-users.ts*
 
   ```tsx
-    type GetUser2faReturnType = {
-      success: boolean; 
-      message?: string;
-      id?: number; 
-      secret?: string; 
-      isActivated?: boolean; 
-    }
-
+    /* NOTE 1 */
     export async function getUser2fa(email: string) 
       : Promise<GetUser2faReturnType>  {
       const [user] = await db
@@ -149,20 +142,24 @@ The `getUser2fa` function below will be used in the next step to return all of t
       }
     };
   ```
+**Notes**: 
+
+  - **Note 1**: *The `GetUser2faReturnType` type can be found in `@/features/auth/types/users.ts` file which consolidates all of the Typescript types associated with the `users` table functions.*
+
 # Step 3: Pass 2FA Fields to Enablement Form
-The `my-account` page will be updated to include the enablement form created earlier. That form will (optionally) render the buttons to enable 2fa. A snippet of the code in the `page.tsx` file is shown below. 
+The `my-account` page will be updated to include the enablement form created earlier. That form will (optionally) render the buttons to enable 2FA. A snippet of the code in the `page.tsx` file is shown below. 
 
-**Note**: *The `getUser2fa` function shown earlier is run to return the 2fa fields from the user's record.*
+**Note**: *The `getUser2fa` function shown earlier is run to return the 2FA settings for the user.*
 
-  **source file**: *@/app/(logged-in)/my-account/page.tsx*
+  **source file**: *`@/app/(auth)/(logged-in)/my-account/page.tsx`*
 
   ```tsx
     ...
-      /* Note 1 */
+      /* NOTE 1 */
       const email = session?.user?.email as string;
-      const result2fa = await getUser2fa(email);
+      const result2FA = await getUser2fa(email);
 
-      /* Note 2 */
+      /* NOTE 2 */
       return (
         <Card className="w-[400] ">
           <CardHeader>
@@ -182,43 +179,43 @@ The `my-account` page will be updated to include the enablement form created ear
   ```
 **Notes**:
 
-  - **Note 1**: Grab the email from the session object and retrieve the 2fa settings for the user. 
-  - **Note 2**: The `<TwoFactorAuthForm>` client component is passed the 2fa boolean and the email address (used for the update of the user's 2fa settings).
+  - **Note 1**: Grab the email from the session object and retrieve the 2FA settings for the user. 
+  - **Note 2**: The `<TwoFactorAuthForm>` client component is passed the 2FA boolean and the email address (used for the update of the user's 2FA settings).
 
-# Step 4: Create Server Action to Generate 2fa Secret
-An server-side actions component will be created for the 2fa form that will generate a secret (if there is none) for the user and return a QR URI that can be used to display a QR Code for the user's authenticator app. 
+# Step 4: Create Server Action to Generate 2FA Secret
+An server-side actions component will be created for the 2FA form that will generate a secret (if there is none) for the user and return a QR URI that can be used to display a QR Code for the user's authenticator app. 
 
-- If a secret is generated then the server component will also update the 2fa settings for the user.
+- If a secret is generated then the server component will also update the 2FA settings for the user.
 - As you may have surmised, additional packages need to be installed to do this.
 
-1. Install One Time Passcode and QR Code packages: `npm i otplib qrcode.react`
+1. Install the shadcn One-Time Passcode component and the QR Code package: `npm i otplib qrcode.react`
 
    **Note**: *See the [otplib package](https://www.npmjs.com/package/otplib) and the [qrcode.react](https://www.npmjs.com/package/qrcode.react) documentation.*  
 
 2. Create a server-side actions component to generate a secret and store that secret in the users table.   
 
-  **source file**: *@/app/(logged-in)/my-account/two-factor-auth-form/actions.ts*
+  **source file**: *`@/app/(auth)/(logged-in)/my-account/two-factor-auth-form/actions.ts`*
 
     ```tsx
         import { getUser2fa, 
                 updateUser2faSecret, 
                 updateUser2faActivated, 
-                Update2faActivatedRecordType, 
+                Update2fsaActivatedRecordType, 
                 Update2faSecretRecordType, 
                 } 
               from "@/db/queries-users";
 
         import { generateSecret, generateURI, generate } from 'otplib';
         export const generate2faSecret = async(email:string) => {
-          /* Note 1 */
-          const result2fa = await getUser2fa(email);
+          /* NOTE 1 */
+          const result2fa = await getUser2FA(email);
           if (!result2fa) {
             return {
               errror: true,
               message: "Authentication error"
             }
           };
-          /* Note 1 */
+          /* NOTE 2 */
           let twoFactorSecret = result2fa.secret;
           if (!result2fa.secret) {
             twoFactorSecret = generateSecret();
@@ -226,7 +223,7 @@ An server-side actions component will be created for the 2fa form that will gene
               email: email,
               secret: twoFactorSecret,
             }
-            /* Note 3 */
+            /* NOTE 3 */
             const updateResult = await updateUser2faSecret(update2faSecret);
             if (updateResult.error) {
               return {
@@ -234,7 +231,7 @@ An server-side actions component will be created for the 2fa form that will gene
                 message: "Authorization update error"
               }
             }
-            /* Note 4 */
+            /* NOTE 4 */
             return {
               error: false,
               qrUri: generateURI({
@@ -248,16 +245,16 @@ An server-side actions component will be created for the 2fa form that will gene
     ```
 **Notes**:
 
-  - **Note 1**: Retrieve user's 2fa secret from the `users` table
+  - **Note 1**: Retrieve user's 2FA secret from the `users` table
   - **Note 2**: If the user does not have a secret then generate one.
-  - **Note 3**: Update both of the user's 2fa settings. 
+  - **Note 3**: Update both of the user's 2FA settings. 
   - **Note 4**: Generate and return a key URI to be used by the authenticator
 
-# Step 5: Display the QR Code in 2fa Form
+# Step 5: Display the QR Code in 2FA Form
 
 The `handleEnableClick` event below renders the 2FA form and runs the `generate2faSecret` function shown in preceding step.
 
-  **source file**: *@app/(logged-in)/my-account/two-factor-auth-form/index.tsx*
+  **source file**: *`@app/(auth)/(logged-in)/my-account/two-factor-auth-form/index.tsx`*
 
   ```tsx
     import { get2faSecret } from "./actions";
@@ -277,9 +274,9 @@ The `handleEnableClick` event below renders the 2FA form and runs the `generate2
     }
   ```
 
-The 2fa form was updated for step 2 to replace the button (it was a placeholder) with the QR Code component.
+The 2FA form was updated for step 2 to replace the button (it was a placeholder) with the QR Code component.
 
-  **source file**: *@app/(logged-in)/my-account/two-factor-auth-form/index.tsx*
+  **source file**: *`@app/(auth)/(logged-in)/my-account/two-factor-auth-form/index.tsx`*
 
   ```tsx
     import { QRCodeSVG } from "qrcode.react";
@@ -301,9 +298,9 @@ The 2fa form was updated for step 2 to replace the button (it was a placeholder)
     ...
   ```
 
-1. Step through the 2fa enablement steps and confirm output.
+1. Step through the 2FA enablement steps and confirm output.
 
-2. On the Neon platform, confirm in the `users` table that the record for that email address has been updated to be 2fa *activated* and includes a *secret* string.
+2. On the Neon platform, confirm in the `users` table that the record for that email address has been updated to be 2FA *activated* and includes a *secret* string.
 
 3. Open your authenticator app on your mobile device and scan the code. Confirm `KbgAuthApp` was added to your authenticator apps.
 
@@ -313,7 +310,7 @@ The third and final step is to render an input field to capture a **one-time cod
 - The user will click on the *I have scanned the QR code* button. 
 - An input field will be rendered ([shadcn input OTP](https://ui.shadcn.com/docs/components/base/input-otp)) so a one-time code can be entered. 
 - Use the otplib verify function to confirm the one-time code is correct.
-- If it is correct, then the 2fa settings in the user table are updated.
+- If it is correct, then the 2FA settings in the user table are updated.
 - Going forward, when the user logs in, the user will be prompted to an authenticator code (See the next How-To guide).
 
 1. Install the `input-otp` component: `npx shadcn@latest add input-otp`
@@ -321,7 +318,7 @@ The third and final step is to render an input field to capture a **one-time cod
 
   **Note**: *The event handler function will associated with the Input-Opt component will be covered in the next section.*
 
-  **source file**: `@app/(logged-in)/my-account/two-factor-auth-form/index.tsx`
+  **source file**: `@app/(auth)/(logged-in)/my-account/two-factor-auth-form/index.tsx`
 
   ```tsx
     import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from "@/components/ui/input-otp";
@@ -386,9 +383,9 @@ The third and final step is to render an input field to capture a **one-time cod
   - **Note 5**: Advancing the `step` variable will renders a different part of the 2FA UI. 
 
 # Step 7: Enable 2FA Submit Event 
-The event handler will call the activate2fa to update the user's 2FA settings in the `users` table. The update means that 2FA verification will be done on each account login.
+The event handler will call the `activate2fa` function to update the user's 2FA settings in the `users` table. The update means that 2FA verification will be done on each account login.
 
-**source file**: *@app/(logged-in)/my-account/two-factor-auth-form/index.tsx*
+**source file**: *`@app/(auth)/(logged-in)/my-account/two-factor-auth-form/index.tsx`*
 
 ```tsx
   ...
@@ -412,28 +409,28 @@ The event handler will call the activate2fa to update the user's 2FA settings in
 ```
 
 # Step 8: Disable 2FA Submit Event
-A submit button to disable 2FA will simply set the `user.twoFactorActivated` to `false`. 
+A submit button to disable 2FA simply sets the `user.twoFactorActivated` to `false`. 
 
 **Note**: *The `user.twoFactorSecret` is not touched as it can be reused should the user want to enable 2FA again.*
 
-**source file**: *@app/(logged-in)/my-account/two-factor-auth-form/index.tsx*
+**source file**: *`@app/(auth)/(logged-in)/my-account/two-factor-auth-form/index.tsx`*
 
 ```tsx
-import { generate2faSecret, activate2fa, disable2fa } from "./actions";
-...
-  const handleDisableClick = async () => {
-    const disableResult = await disable2fa(email);
-    if (disableResult.error) {
-      toast.error(disableResult.message, {
-        position: "bottom-center",
-        duration: 3000,
-      });
-      setActivated(true);
-      return;
-    }
-    setActivated(false);
-    setStep(1);
-  };
+  import { generate2faSecret, activate2fa, disable2fa } from "./actions";
+  ...
+    const handleDisableClick = async () => {
+      const disableResult = await disable2fa(email);
+      if (disableResult.error) {
+        toast.error(disableResult.message, {
+          position: "bottom-center",
+          duration: 3000,
+        });
+        setActivated(true);
+        return;
+      }
+      setActivated(false);
+      setStep(1);
+    };
 ```
 
 

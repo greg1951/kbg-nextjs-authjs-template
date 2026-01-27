@@ -1,5 +1,4 @@
 import NextAuth from "next-auth";
-
 import Credentials from 'next-auth/providers/credentials';
 import { authValidation } from "./features/auth/services/auth-utils";
 

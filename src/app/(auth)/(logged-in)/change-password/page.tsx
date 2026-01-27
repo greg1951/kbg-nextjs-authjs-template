@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import ChangePasswordForm from "./change-password-form";
 import { redirect } from "next/navigation";
-import { getSessionEmail } from "@/src/lib/auth-utils";
+import { getSessionEmail } from "@/features/auth/services/auth-utils";
 
 export default async function ChangePassword() {
 

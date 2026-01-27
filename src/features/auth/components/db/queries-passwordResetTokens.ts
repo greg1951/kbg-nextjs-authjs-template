@@ -1,20 +1,14 @@
 "use server";
 
 import { passwordResetTokens } from './schema';
-import db from './drizzle';
+import db from '../../../../components/db/drizzle';
 import { eq } from 'drizzle-orm';
 import { getEmailByUserId } from './queries-users';
-
-export type InsertRecordType = {
-  userId: number;
-  token: string;
-  tokenExpiry: Date;
-}
-
-type InsertReturnType = {
-  error: boolean,
-  message?: string
-}
+import { InsertRecordType,
+         InsertReturnType, 
+         PasswordTokenRecordType,
+         GetPasswordTokenReturnType,
+         RemoveReturnType } from "@/features/auth/types/passwordResetTokens";
 
 export async function insertPasswordToken(arg: InsertRecordType)
 : Promise<InsertReturnType> {
@@ -50,18 +44,6 @@ export async function insertPasswordToken(arg: InsertRecordType)
       }
     }
   }
-
-export type PasswordTokenRecordType = {
-  token: string;
-}
-
-type GetPasswordTokenReturnType = {
-  error: boolean,
-  message?: string,
-  email?: string,
-  tokenExpiry?: Date,
-  isValidExpiry?: boolean
-}
 
 export async function getPasswordToken(arg: PasswordTokenRecordType)
 : Promise<GetPasswordTokenReturnType> {
@@ -101,12 +83,6 @@ export async function getPasswordToken(arg: PasswordTokenRecordType)
       isValidExpiry: isValid
     };
 };
-
-type RemoveRecordType = {userId: number}
-type RemoveReturnType = {
-  error: boolean,
-  message?: string
-}
 
 export async function removePasswordToken(userId: number)
 : Promise<RemoveReturnType> {

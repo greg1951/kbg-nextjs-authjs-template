@@ -3,8 +3,10 @@
 import { auth } from "@/auth";
 import { getUserByEmail } from "@/features/auth/components/db/queries-users";
 import { randomBytes } from "crypto";
-import { InsertRecordType, insertPasswordToken } from "@/features/auth/components/db/queries-passwordResetTokens";
-import { mailer } from "@/src/lib/email";
+import { insertPasswordToken } from "@/features/auth/components/db/queries-passwordResetTokens";
+import { InsertRecordType } from "@/features/auth/types/passwordResetTokens";
+
+import { mailer } from "@/lib/email";
 
 export const passwordReset = async (email: string) => {
   const session = await auth();
@@ -14,7 +16,7 @@ export const passwordReset = async (email: string) => {
       message: "You are already logged in"
     }
   };
-
+     
   const userInfo = await getUserByEmail(email);
   if (!userInfo.success) {
     return;

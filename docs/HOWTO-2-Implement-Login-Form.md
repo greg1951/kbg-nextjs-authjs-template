@@ -53,7 +53,7 @@ The application routes are going to fall into one of two categories: logged in o
 
 The layout files provide a means to enforce login session rules. For example, all of the page.tsx files within the `(logged-in)` group require an authorization session. The snippet below resides in the `layout-tsx` file. If there is no session, then redirect the user to the login page.
 
-**source file**: *`@/app/(logged-in)/layout-tsx`*
+**source file**: *`@/app/(auth)/(logged-in)/layout-tsx`*
 
 ```tsx
 ...
@@ -76,7 +76,7 @@ The main points of the Login form and its associated server actions are shown as
 ## Login Form Page
 Much of what was done for the Register account form can be duplicated to create the login page functionality.
 
-**source file**: *`@/app/(logged-out)/login/page.tsx`*
+**source file**: *`@/app/(auth)/(logged-out)/login/page.tsx`*
 
 ```tsx
   'use client';
@@ -93,14 +93,14 @@ Much of what was done for the Register account form can be duplicated to create 
 ```
 **Notes**:
 
-  -**Note 1**: *Every page that implements a form delegates that functionality to a separate `index.tsx` file in the form directory (e.g. `@/app/(logged-out)/login-form/index.tsx`).*
+  -**Note 1**: *Every page that implements a form delegates that functionality to a separate `index.tsx` file in the form directory (e.g. `@/app/(auth)/(logged-out)/login-form/index.tsx`).*
 
   -**Note 2**: *The form itself contains all of the requisite client side components to validate the credentials. The actual login is performed by the `auth.ts` signIn interface which runs the authorize function [to be configured later)](#configure-authts-provider).*
 
 ## Login Form
 The pattern to implement a form would require: a form directory that contains a client form component (`index.tsx`) and a server actions component (`actions.ts`) be used. Any server side components that need to be accessed are done in the server actions component.
 
-**source file**: *`@/app/(logged-out)/login/login-form/index.tsx`* <<< The is full-monty implementation. The snippet below is abbreviated.
+**source file**: *`@/app/(auth)/(logged-out)/login/login-form/index.tsx`* <<< The is full-monty implementation. The snippet below is abbreviated.
 
 ```tsx
   ...
@@ -242,7 +242,7 @@ The pattern to implement a form would require: a form directory that contains a 
 ## Login Server Action
 The server actions file will validate the input provided in the credentials conforms to the schema. The validation that the user is in fact registered in the users table and that the password matches is a validation performed via the `signIn` function exposed in the `@/auth.ts` file.
 
-**source file**: *`@/app/(logged-out)/login/login-form/actions.ts`*
+**source file**: *`@/app/(auth)/(logged-out)/login/login-form/actions.ts`*
 
 ```tsx
   'use server';
@@ -323,7 +323,7 @@ It's a good idea to get acquainted with the [Auth.js documentation for credentia
         providers: [],
     })
     ```
-2. Create `route.ts` file in the following new directory: `/app/api/auth/[...nextauth]` with content below.
+2. Create `route.ts` file in the following new directory: `@/app/api/auth/[...nextauth]` with content below.
 
     ```tsx
       import { handlers } from "@/auth" 
@@ -335,7 +335,7 @@ It's a good idea to get acquainted with the [Auth.js documentation for credentia
 3. Create `@/proxy.ts` file with the following content.
 
     ```tsx
-    export { auth as proxy } from "@/auth"
+    export { auth as proxy } from "./auth"
     ```
   **Note**: *The documentation still references the `middleware` proxy but this is deprecated. Instead, use `proxy`.*
 
@@ -361,7 +361,7 @@ The fully implemented NextAuth `auth.ts` file is shown below. Important Notes fo
 ```tsx
   import NextAuth from "next-auth";
   import Credentials from 'next-auth/providers/credentials';
-  import { authValidation } from "./lib/auth-utils";
+  import { authValidation } from "./features/auth/services/auth-utils";
 
   /* NOTE 1 */
   type AuthRecord = {
@@ -438,12 +438,12 @@ When a user has logged in, a button to logout must be provided. This is implemen
 ## Create Logout Client Component
 The client button to implement the logout is shown below. 
    
-  **source file**: *`@/app/(logged-in)/auth-components/index.tsx`* 
+  **source file**: *`@/app/(auth)/(logged-in)/auth-components/index.tsx`* 
 
   ```tsx
     'use client';
 
-    import { Button } from "../../../components/ui/button";
+    import { Button } from "@/components/ui/button";
     import { logout } from "./actions";
 
     export default function LogoutButton() {
@@ -461,7 +461,7 @@ The client button to implement the logout is shown below.
 ## The Logout Server Action
   When the button `onClick` event fires, the `logout` function exported from `actions.ts` will run. In turn, it executes the `signOut` function configured in `auth.ts`. Say bye-bye authentication session!
 
-  **source file**: *`@/app/(logged-in)/auth-components/actions.ts`* 
+  **source file**: *`@/app/(auth)/(logged-in)/auth-components/actions.ts`* 
 
   ```tsx
     'use server';

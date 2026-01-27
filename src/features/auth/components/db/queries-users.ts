@@ -2,30 +2,17 @@
 
 import { count, eq } from 'drizzle-orm';
 import { users } from './schema';
-import db from './drizzle';
-import { hashUserPassword } from "../../services/hash";
+import db from '@/components/db/drizzle';
+import { hashUserPassword } from "@/features/auth/services/hash";
+import { RegisteredTypeof, 
+         ErrorReturnType, 
+         UserPasswordReturnType, 
+         GetFullUserCredsReturnType, 
+         GetUser2faReturnType,
+         Update2faSecretRecordType,
+         Update2faActivatedRecordType,
+         EmailByIdReturnType, } from "@/features/auth/types/users"
 
-type RegisteredReturnType = {
-  id: number;
-  email: string;
-  password: string;
-  mfaSecret: string;
-  mfaActivated: boolean;
-}
-type RegisteredTypeof = ReturnType<RegisteredReturnType>;
-
-type ErrorReturnType = {
-  error: boolean;
-  message?: string;
-}
-
-type UserPasswordReturnType = {
-  success: boolean; 
-  id?: number; 
-  password?: string; 
-  salt?: string; 
-  message?: string
-}
 
 export async function isUserRegistered(email: string) {
   const result = await db
@@ -53,7 +40,8 @@ export async function insertRegisteredUser(email: string, password: string)
 
 }
 
-export async function updateUserPassword(email: string, password: string) : Promise<ErrorReturnType> {
+export async function updateUserPassword(email: string, password: string) 
+: Promise<ErrorReturnType> {
   const hashedPassword = hashUserPassword(password);
   let returnedResult;
   try {
@@ -74,16 +62,6 @@ export async function updateUserPassword(email: string, password: string) : Prom
     }      
     return returnedResult;
 
-}
-
-
-export type GetFullUserCredsReturnType = {
-  id: number; 
-  email: string; 
-  password: string; 
-  salt: string;
-  isActivated: boolean;
-  secret: string;
 }
 
 /* This function is used by the Auth.js Credentials provider */
@@ -144,7 +122,7 @@ export async function getUserByEmail(email: string)
     const passwordParts = user.password.split(':');
     // console.log('getUserByEmail->passwordParts', passwordParts);
     if (passwordParts.length === 2) {
-      const fullUserInfo = {
+      const fullUserInfo:UserPasswordReturnType = {
         success: true,
         id: user.id as number,
         password: passwordParts[0],
@@ -159,14 +137,6 @@ export async function getUserByEmail(email: string)
         message: "The credentials could not be parsed properly."
       }
     }
-}
-
-type GetUser2faReturnType = {
-  success: boolean; 
-  message?: string;
-  id?: number; 
-  secret?: string; 
-  isActivated?: boolean; 
 }
 
 export async function getUser2fa(email: string) 
@@ -193,11 +163,6 @@ export async function getUser2fa(email: string)
   }
 };
 
-export type Update2faSecretRecordType = {
-  email: string; 
-  secret: string;
-}
-
 export async function updateUser2faSecret(args: Update2faSecretRecordType) 
   : Promise<ErrorReturnType>  {
   const updateResult = await db
@@ -215,11 +180,6 @@ export async function updateUser2faSecret(args: Update2faSecretRecordType)
     error: false, 
   }
 };
-
-export type Update2faActivatedRecordType = {
-  email: string; 
-  isActivated: boolean;
-}
 
 export async function updateUser2faActivated(args: Update2faActivatedRecordType) 
   : Promise<ErrorReturnType>  {
@@ -239,12 +199,6 @@ export async function updateUser2faActivated(args: Update2faActivatedRecordType)
     error: false, 
   }
 };
-
-type EmailByIdReturnType = {
-  success: boolean; 
-  email?: string; 
-  message?: string
-}
 
 export async function getEmailByUserId(userId: number) 
   : Promise<EmailByIdReturnType>  {

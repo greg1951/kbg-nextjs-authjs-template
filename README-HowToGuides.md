@@ -1,3 +1,8 @@
+# Project Structure Overview 
+This app is a working implementation of **Next.js** and **Auth.js** (or NextAuth v5) authentication. With authentication in place, the project can be used as a project boiler plate to seed a new application project, as most applications need authentication to start with. This project addresses the **auth** domain but leaves room for other features to be included.
+
+![](./docs/feature-driven-structure.png)
+
 # Table of Contents
 To keep the implementation documentation at a digestible level, the various markdown files are provided.
 

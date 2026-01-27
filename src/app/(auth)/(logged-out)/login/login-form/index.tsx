@@ -4,11 +4,9 @@ import { passwordSchema } from "@/features/auth/components/validation/passwordSc
 import z from "zod";
 import { useForm } from "react-hook-form";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
-  from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage }
-  from "@/components/ui/form";
-import { emailLoginCheck, fullLoginUser, ValidateOtpRecordType } from "./actions";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { emailLoginCheck, fullLoginUser } from "./actions";
 import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
@@ -80,10 +78,11 @@ export default function LoginForm() {
 
   const handle2faSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const validateOtpRecord: ValidateOtpRecordType = { email: email, token: otp };
-    console.log('Login->handle2faSubmit->validateOtpRecord: ', validateOtpRecord);
-    const loginResult = await fullLoginUser({ email: email, password: form.getValues("password"), token: otp })
-    console.log('Login->handle2faSubmit->loginResult: ', loginResult);
+    const loginResult = await fullLoginUser({
+      email: email,
+      password: form.getValues("password"),
+      token: otp
+    });
     if (loginResult?.error) {
       setOtpError(loginResult.message as string);
     }

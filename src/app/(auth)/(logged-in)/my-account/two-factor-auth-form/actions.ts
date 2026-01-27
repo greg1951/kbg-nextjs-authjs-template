@@ -2,11 +2,10 @@
 
 import { getUser2fa, 
          updateUser2faSecret, 
-         updateUser2faActivated, 
-         Update2faActivatedRecordType, 
-         Update2faSecretRecordType, 
-        } 
-      from "@/features/auth/components/db/queries-users";
+         updateUser2faActivated,   
+        } from "@/features/auth/components/db/queries-users";
+import { Update2faSecretRecordType, 
+         Update2faActivatedRecordType } from "@/features/auth/types/users"
 
 import { generateSecret, generateURI, generate } from 'otplib';
 
@@ -18,16 +17,18 @@ export const generate2faSecret = async(email:string) => {
       message: "Authentication error"
     }
   };
-
+  
   let twoFactorSecret = result2fa.secret;
 
   if (!result2fa.secret) {
     twoFactorSecret = generateSecret();
+
     const update2faSecret:Update2faSecretRecordType = {
       email: email,
       secret: twoFactorSecret,
     }
     const updateResult = await updateUser2faSecret(update2faSecret);
+
     if (updateResult.error) {
       return {
         error: true,
