@@ -1,10 +1,11 @@
 1. [Overview](#overview)
 2. [Step 1: Create Next.js Project](#step-1-create-nextjs-project)
 3. [Step 2: Install Components](#step-2-install-components)
-   1. [shdcn](#shdcn)
+   1. [shadcn](#shadcn)
    2. [Drizzle and PostgreSql](#drizzle-and-postgresql)
    3. [Zod](#zod)
    4. [Cryptography](#cryptography)
+   5. [OTP and QR Code](#otp-and-qr-code)
 4. [Step 3: Set Up PostgreSql Neon Database](#step-3-set-up-postgresql-neon-database)
    1. [Install and Configure](#install-and-configure)
    2. [Create Users Table](#create-users-table)
@@ -28,6 +29,10 @@ Here are the development steps this How-To guide will follow.
 4. Create Register Account form.
 
 # Step 1: Create Next.js Project
+There are a couple of ways to use this project, the best method might be to fork the main branch of this project on GitHub, or to use the `npx` command below to create the Next.js project.
+
+## Fork GitHub Project
+
 1. Run the `npx` command to create the project: `npx create-next-app@latest`. You will be prompted:
    1. To enter the app name. 
    2. whether you want to use a source "src" directory. Create a "src" directory!
@@ -41,9 +46,11 @@ Here are the development steps this How-To guide will follow.
 2. Run `npm install` and get some coffee.
 
 # Step 2: Install Components
-There's a long list of components. Be vigilant as changes are introduced that may not work the same depending on what's in the latest version. Consult the `@/package.json` for the versions in this GitHub branch.
+There's a long list of components used by the authentication app. The installs will be repeated in various How-To guides but they are provided here as a headstart. If you install them from here, then ignore them later. 
 
-## shdcn
+Be vigilant when performing the installations, as changes are introduced that may not work the same depending on what's in the latest version. Consult the `@/package.json` for the versions in this GitHub branch.
+
+## shadcn
 The shadcn UI component library was used extensively throughout. The installs below were done. 
 
 ```bash
@@ -79,6 +86,13 @@ For password hashing the `bcryptjs` library was used. Run both commands below.
 npm i bcryptjs
 npm i --save-dev @types/bcryptjs
 ```
+## OTP and QR Code
+Install One-Time Passcode secret generation and QR Code SVG packages.
+
+```bash
+npm i otplib qrcode.react
+```
+
 # Step 3: Set Up PostgreSql Neon Database
 
 The `registerUser` server function will be updated to insert the registered user in a **PostgreSql** (v17) database table hosted in **[Neon](https://neon.tech)**. 

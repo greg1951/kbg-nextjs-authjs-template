@@ -1,3 +1,8 @@
+1. [Overview](#overview)
+2. [Step 1: Add OTP Input Step to Login Form](#step-1-add-otp-input-step-to-login-form)
+3. [Step 2: Add Server Action](#step-2-add-server-action)
+
+---
 # Overview
 
 The previous [How-To guide](./HOWTO-7-TwoFactorAuth.md) covered providing a user with two-factor authentication. Now that 2FA is added to the project all that remains is to update the login process to use it. It's pretty involved, so there's an overview below.
@@ -30,9 +35,11 @@ In the prior How-To guide that documented the login form, the 2nd step was left 
   /* NOTE 1 */
   const handle2faSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const validateOtpRecord: ValidateOtpRecordType = { email: email, token: otp };
     
-    const loginResult = await fullLoginUser({ email: email, password: form.getValues("password"), token: otp })
+    const loginResult = await fullLoginUser({ 
+      email: email, 
+      password: form.getValues("password"), 
+      token: otp });
     
     if (loginResult?.error) {
       setOtpError(loginResult.message as string);
@@ -88,4 +95,69 @@ In the prior How-To guide that documented the login form, the 2nd step was left 
   - **Note 3**: *React state variable `otp` is being used capture the OTP, in the `onChange` event.*
   - **Note 4**: *The Verify OTP button is disabled until all 6 digits of the OTP are entered.*
 
-# Step 2: Add OTP Input Submit Event Handler
+# Step 2: Add Server Action 
+The server actions component for this form provides `fullLoginUser` as the function that validates the OTP and finalizes the login. 
+
+**source file**: *`@app/(auth)/(logged-out)/login/login-form/action.tsx`*
+
+```tsx
+  ...
+  /* NOTE 1 */
+  export const fullLoginUser = async({email, password, token}
+    : {email: string, password: string, token?: string}) => {
+      const userSchema = z.object({
+        email: z.email(),
+        password: passwordSchema
+      });
+      
+      const userValidation = userSchema.safeParse({email, password});
+      if (!userValidation.success) {
+        return {
+          error: true,
+          message: userValidation.error.issues[0]?.message ?? "An error occurred in validation",
+        };          
+      };
+      /* NOTE 2 */
+      try {
+        const signInResult = await signIn("credentials", {
+          email,
+          password,
+          token,
+          redirect: false
+        })
+      } catch(e) {
+        return {
+          error: true,
+          message: "Incorrect email or password"
+        }
+      };    
+    };
+```
+**Notes**:
+
+  - **Note 1**: *The argument accepts the OTP provided in Step 2 in the `token` argument of the function.*
+
+  - **Note 2**: *The `signIn` callback method is exposed in the `@auth.ts` file. and the `authorize` method (snippet shown below) in that file also validates the OTP token.* 
+
+    **source file**: *`@auth.ts`*
+
+    ```tsx
+      ...
+          async authorize(credentials) {
+
+            const authRecord:AuthRecord = {
+              email: credentials.email as string,
+              password: credentials.password as string,
+              token: credentials.token as string,
+            };
+
+            const validationResult = await authValidation(authRecord);
+            if (validationResult.error) {
+              return null;
+            };
+            return  validationResult;      
+          }
+        });
+      ...        
+    ```
+

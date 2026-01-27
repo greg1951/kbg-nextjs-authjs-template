@@ -188,7 +188,7 @@ An server-side actions component will be created for the 2FA form that will gene
 - If a secret is generated then the server component will also update the 2FA settings for the user.
 - As you may have surmised, additional packages need to be installed to do this.
 
-1. Install the shadcn One-Time Passcode component and the QR Code package: `npm i otplib qrcode.react`
+1. Install a One-Time Passcode and QR Code packages: `npm i otplib qrcode.react`
 
    **Note**: *See the [otplib package](https://www.npmjs.com/package/otplib) and the [qrcode.react](https://www.npmjs.com/package/qrcode.react) documentation.*  
 
